@@ -45,7 +45,7 @@ export default function ProductosPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-1 flex-col gap-4 pb-24">
+      <div className="flex flex-1 flex-col gap-4">
         <h1 className="text-2xl font-bold text-stone-900">Productos</h1>
         <p className="text-sm text-stone-600">
           Catálogo opcional. Si activas nombres en caja, aquí puedes definir

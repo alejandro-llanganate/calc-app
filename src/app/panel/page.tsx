@@ -156,7 +156,7 @@ export default function PanelPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-1 flex-col gap-4 pb-24">
+      <div className="flex flex-1 flex-col gap-4">
         <div>
           <h1 className="text-2xl font-bold text-stone-900">Panel</h1>
           <p className="mt-1 text-sm text-stone-600">

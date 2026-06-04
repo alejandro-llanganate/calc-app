@@ -7,6 +7,7 @@ import { PurchaseHistoryList } from "./PurchaseHistoryList";
 import { AmountInput, isValidAmount } from "./AmountInput";
 import { AMOUNT_INPUT_ID } from "@/lib/calculator";
 import { ProductSuggestions } from "./ProductSuggestions";
+import { ScrollToTopButton } from "./ScrollToTopButton";
 import { useAppData } from "@/context/AppDataProvider";
 import {
   appendAmountDecimal,
@@ -20,7 +21,8 @@ import { findProductByName, suggestProducts } from "@/lib/products";
 import { generateId, purchaseTotal } from "@/lib/storage";
 import type { PurchaseItem, Product } from "@/lib/types";
 import { useCalculatorKeyboard } from "@/hooks/useCalculatorKeyboard";
-import { ChevronDown, ChevronUp } from "lucide-react";
+
+const CAJA_TOP_ID = "caja-top";
 
 export function RegisterSale() {
   const {
@@ -38,7 +40,6 @@ export function RegisterSale() {
   const [itemName, setItemName] = useState("");
   const [saveToCatalog, setSaveToCatalog] = useState(false);
   const [cartItems, setCartItems] = useState<PurchaseItem[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
   const [flash, setFlash] = useState(false);
 
   const symbol = settings.currencySymbol;
@@ -96,23 +97,11 @@ export function RegisterSale() {
 
     setCartItems((prev) => [
       ...prev,
-      {
-        id: generateId(),
-        amount,
-        note,
-        productId,
-      },
+      { id: generateId(), amount, note, productId },
     ]);
     setInput("");
     setItemName("");
-  }, [
-    input,
-    detailMode,
-    itemName,
-    saveToCatalog,
-    upsertProduct,
-    products,
-  ]);
+  }, [input, detailMode, itemName, saveToCatalog, upsertProduct, products]);
 
   const removeCartItem = useCallback((id: string) => {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
@@ -144,37 +133,44 @@ export function RegisterSale() {
 
   const canAdd = isValidAmount(input);
 
-  return (
-    <div className="flex flex-1 flex-col gap-3 pb-24">
-      <header className="flex shrink-0 items-center justify-between gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-white">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-medium text-emerald-100">
-            {settings.storeName}
-          </p>
-          <p
-            className={`text-base font-semibold leading-tight transition-transform ${flash ? "scale-105" : ""}`}
-          >
-            {formatMoney(todayTotal, symbol)}
-            <span className="ml-1.5 text-xs font-normal text-emerald-200">
-              · {todayPurchases.length}{" "}
-              {todayPurchases.length === 1 ? "compra" : "compras"}
-            </span>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => toggleItemDetails(!detailMode)}
-          className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
-            detailMode
-              ? "bg-white text-emerald-800"
-              : "bg-emerald-600/80 text-emerald-100 ring-1 ring-emerald-500/60"
-          }`}
-        >
-          {detailMode ? "Detalle ON" : "Detalle OFF"}
-        </button>
-      </header>
+  const scrollToCaja = () => {
+    document.getElementById(CAJA_TOP_ID)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
 
-      <div className="sticky top-0 z-10 -mx-4 space-y-3 bg-stone-50 px-4 pb-3 pt-1">
+  return (
+    <div className="flex flex-1 flex-col gap-4">
+      <div id={CAJA_TOP_ID} className="scroll-mt-[4.5rem] space-y-3">
+        <header className="flex items-center justify-between gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-white">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-emerald-100">
+              {settings.storeName}
+            </p>
+            <p
+              className={`text-base font-semibold leading-tight transition-transform ${flash ? "scale-105" : ""}`}
+            >
+              {formatMoney(todayTotal, symbol)}
+              <span className="ml-1.5 text-xs font-normal text-emerald-200">
+                · {todayPurchases.length}{" "}
+                {todayPurchases.length === 1 ? "compra" : "compras"}
+              </span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toggleItemDetails(!detailMode)}
+            className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
+              detailMode
+                ? "bg-white text-emerald-800"
+                : "bg-emerald-600/80 text-emerald-100 ring-1 ring-emerald-500/60"
+            }`}
+          >
+            {detailMode ? "Detalle ON" : "Detalle OFF"}
+          </button>
+        </header>
+
         <section
           className={`rounded-2xl border-2 bg-white px-4 py-4 shadow-sm transition-colors ${
             flash ? "border-emerald-400" : "border-stone-200"
@@ -201,7 +197,7 @@ export function RegisterSale() {
                   onChange={(e) => setSaveToCatalog(e.target.checked)}
                   className="h-4 w-4 rounded border-stone-300 text-emerald-600"
                 />
-                Guardar en catálogo (para sugerir después)
+                Guardar en catálogo
               </label>
             </div>
           )}
@@ -220,9 +216,6 @@ export function RegisterSale() {
             placeholder="0"
             autoFocus
           />
-          <p className="mt-1 text-[10px] text-stone-400">
-            Teclado: números, coma o punto, Enter para sumar, Esc para borrar
-          </p>
 
           {detailMode && suggestions.length > 0 && (
             <div className="mt-3 border-t border-stone-100 pt-3">
@@ -234,22 +227,22 @@ export function RegisterSale() {
             </div>
           )}
 
-        {cartItems.length > 0 && (
-          <div className="mt-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-              Compra actual
-            </p>
-            <div className="mt-0.5 flex items-baseline justify-between gap-2">
-              <p className="text-3xl font-bold tabular-nums text-emerald-800">
-                {formatMoney(cartTotal, symbol)}
+          {cartItems.length > 0 && (
+            <div className="mt-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                Compra actual
               </p>
-              <p className="text-sm font-medium text-emerald-700">
-                {cartItems.length}{" "}
-                {cartItems.length === 1 ? "artículo" : "artículos"}
-              </p>
+              <div className="mt-0.5 flex items-baseline justify-between gap-2">
+                <p className="text-2xl font-bold tabular-nums text-emerald-800 sm:text-3xl">
+                  {formatMoney(cartTotal, symbol)}
+                </p>
+                <p className="text-sm font-medium text-emerald-700">
+                  {cartItems.length}{" "}
+                  {cartItems.length === 1 ? "artículo" : "artículos"}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </section>
 
         <CalculatorKeypad
@@ -261,15 +254,6 @@ export function RegisterSale() {
           addDisabled={!canAdd}
         />
 
-        {cartItems.length > 0 && (
-          <div className="flex items-center justify-between rounded-xl bg-emerald-600 px-4 py-3 text-white shadow-sm">
-            <span className="text-sm font-medium">Total compra actual</span>
-            <span className="text-2xl font-bold tabular-nums">
-              {formatMoney(cartTotal, symbol)}
-            </span>
-          </div>
-        )}
-
         <button
           type="button"
           onClick={finishPurchase}
@@ -280,66 +264,66 @@ export function RegisterSale() {
         </button>
       </div>
 
-      {!detailMode && (
-        <p className="text-center text-xs text-stone-500">
-          Modo rápido: solo monto y +. Activa Detalle para nombres y sugerencias.
-        </p>
-      )}
+      <section
+        id="detalle-compra"
+        className="scroll-mt-[4.5rem] space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"
+      >
+        <div className="border-b border-stone-100 pb-3">
+          <h2 className="text-lg font-semibold text-stone-900">
+            Detalle de la compra
+          </h2>
+          <p className="mt-1 text-sm text-stone-500">
+            Artículos en curso y compras finalizadas hoy
+          </p>
+          <button
+            type="button"
+            onClick={scrollToCaja}
+            className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-medium text-emerald-800 active:bg-emerald-100"
+          >
+            ↑ Volver a la calculadora
+          </button>
+        </div>
 
-      <section className="rounded-2xl border border-stone-200 bg-white p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-stone-700">
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-stone-700">
               Artículos en la compra
-            </p>
+            </h3>
             {cartItems.length > 0 && (
-              <p className="mt-0.5 text-lg font-bold text-emerald-700">
-                {formatMoney(cartTotal, symbol)}
-              </p>
+              <button
+                type="button"
+                onClick={clearCart}
+                className="text-xs text-red-600"
+              >
+                Vaciar
+              </button>
             )}
           </div>
           {cartItems.length > 0 && (
-            <button
-              type="button"
-              onClick={clearCart}
-              className="rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-            >
-              Vaciar
-            </button>
+            <p className="mb-2 text-xl font-bold text-emerald-700">
+              {formatMoney(cartTotal, symbol)}
+            </p>
           )}
-        </div>
-        <div className="mt-2 max-h-52 overflow-y-auto border-t border-stone-100 pt-2">
           <CartItemsList
             items={cartItems}
             currencySymbol={symbol}
             onRemove={removeCartItem}
           />
         </div>
+
+        <div className="border-t border-stone-100 pt-4">
+          <h3 className="mb-2 text-sm font-medium text-stone-700">
+            Compras de hoy
+          </h3>
+          <PurchaseHistoryList
+            purchases={todayPurchases}
+            currencySymbol={symbol}
+            onRemove={removePurchase}
+          />
+        </div>
       </section>
 
-      <section className="rounded-2xl border border-stone-200 bg-white">
-        <button
-          type="button"
-          onClick={() => setShowHistory((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-stone-700"
-        >
-          <span>Compras de hoy</span>
-          {showHistory ? (
-            <ChevronUp className="h-4 w-4 text-stone-400" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-stone-400" />
-          )}
-        </button>
-        {showHistory && (
-          <div className="border-t border-stone-100 px-4 pb-3">
-            <PurchaseHistoryList
-              purchases={todayPurchases}
-              currencySymbol={symbol}
-              onRemove={removePurchase}
-            />
-          </div>
-        )}
-      </section>
+      <ScrollToTopButton targetId={CAJA_TOP_ID} label="Caja" />
     </div>
   );
 }

@@ -22,6 +22,10 @@ body {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+.safe-top {
+  padding-top: max(0rem, env(safe-area-inset-top));
+}
+
 .touch-manipulation {
   touch-action: manipulation;
 }

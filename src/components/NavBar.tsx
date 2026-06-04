@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Calculator,
   LayoutDashboard,
   Package,
   History,
   Settings,
+  Menu,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -21,43 +24,80 @@ const links: { href: string; label: string; icon: LucideIcon }[] = [
 
 export function NavBar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  const isActive = (href: string) =>
+    href === "/"
+      ? pathname === "/"
+      : pathname === href ||
+        (href === "/panel" && pathname === "/panel");
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-stone-200 bg-white/95 backdrop-blur safe-bottom">
-      <div className="mx-auto flex max-w-lg justify-around px-1 py-1.5">
-        {links.map((link) => {
-          const active =
-            link.href === "/"
-              ? pathname === "/"
-              : pathname === link.href ||
-                (link.href === "/panel" && pathname === "/panel");
-          const Icon = link.icon;
+    <>
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur safe-top">
+        <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
+          <Link href="/" className="font-semibold text-emerald-800">
+            Caja Ventas
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={open}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 bg-stone-50 text-stone-700 active:bg-stone-100"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </header>
 
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl px-1 py-1.5 text-center text-[10px] transition-colors ${
-                active
-                  ? "font-semibold text-emerald-700"
-                  : "text-stone-500 hover:text-stone-800"
-              }`}
-            >
-              <span
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors ${
-                  active ? "bg-emerald-100" : "bg-transparent"
-                }`}
-              >
-                <Icon
-                  className={`h-[1.125rem] w-[1.125rem] ${active ? "stroke-[2.5]" : "stroke-[2]"}`}
-                  aria-hidden
-                />
-              </span>
-              <span className="truncate leading-none">{link.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Cerrar menú"
+            className="fixed inset-0 z-40 bg-stone-900/30 backdrop-blur-[1px]"
+            onClick={() => setOpen(false)}
+          />
+          <nav className="fixed top-[57px] left-0 right-0 z-50 max-h-[calc(100dvh-57px)] overflow-y-auto border-b border-stone-200 bg-white shadow-lg">
+            <ul className="mx-auto max-w-lg py-2">
+              {links.map((link) => {
+                const active = isActive(link.href);
+                const Icon = link.icon;
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3.5 text-base transition-colors ${
+                        active
+                          ? "bg-emerald-50 font-semibold text-emerald-800"
+                          : "text-stone-700 active:bg-stone-50"
+                      }`}
+                    >
+                      <Icon
+                        className={`h-5 w-5 ${active ? "text-emerald-700" : "text-stone-500"}`}
+                      />
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </>
+      )}
+    </>
   );
 }
