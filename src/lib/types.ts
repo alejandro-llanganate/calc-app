@@ -26,7 +26,7 @@ export type AppSettings = {
   features: {
     /** Nombres y sugerencias de producto al registrar en caja */
     itemDetails: boolean;
-    /** Fase 2: escanear código de barras (no implementado) */
+    /** Escáner de código de barras en caja (catálogo ya lo soporta) */
     barcodeScanner: boolean;
     /** Fase 3: emitir facturas (no implementado) */
     invoicing: boolean;

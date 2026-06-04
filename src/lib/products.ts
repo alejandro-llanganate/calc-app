@@ -38,3 +38,16 @@ export function findProductByName(
   if (!q) return undefined;
   return products.find((p) => p.name.toLowerCase() === q);
 }
+
+export function normalizeBarcode(code: string): string {
+  return code.replace(/\s/g, "").trim();
+}
+
+export function findProductByBarcode(
+  products: Product[],
+  barcode: string,
+): Product | undefined {
+  const q = normalizeBarcode(barcode);
+  if (!q) return undefined;
+  return products.find((p) => p.barcode && normalizeBarcode(p.barcode) === q);
+}

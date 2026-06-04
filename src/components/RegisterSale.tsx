@@ -29,11 +29,9 @@ export function RegisterSale() {
     settings,
     products,
     todayPurchases,
-    todayTotal,
     finalizePurchase,
     removePurchase,
     upsertProduct,
-    toggleItemDetails,
   } = useAppData();
 
   const [input, setInput] = useState("");
@@ -142,35 +140,7 @@ export function RegisterSale() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <div id={CAJA_TOP_ID} className="scroll-mt-[4.5rem] space-y-3">
-        <header className="flex items-center justify-between gap-2 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-600 px-3.5 py-2.5 text-white shadow-sm shadow-emerald-900/10">
-          <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-emerald-100">
-              {settings.storeName}
-            </p>
-            <p
-              className={`text-base font-semibold leading-tight transition-transform ${flash ? "scale-105" : ""}`}
-            >
-              {formatMoney(todayTotal, symbol)}
-              <span className="ml-1.5 text-xs font-normal text-emerald-200">
-                · {todayPurchases.length}{" "}
-                {todayPurchases.length === 1 ? "compra" : "compras"}
-              </span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => toggleItemDetails(!detailMode)}
-            className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold transition-all ${
-              detailMode
-                ? "bg-white text-emerald-800 shadow-sm"
-                : "bg-white/15 text-emerald-50 ring-1 ring-white/25 backdrop-blur-sm"
-            }`}
-          >
-            {detailMode ? "Detalle ON" : "Detalle OFF"}
-          </button>
-        </header>
-
+      <div id={CAJA_TOP_ID} className="scroll-mt-[4.75rem] space-y-3">
         <section
           className={`overflow-hidden rounded-3xl border bg-white shadow-[0_8px_30px_rgba(28,25,23,0.06)] transition-all ${
             flash ? "border-emerald-400 ring-2 ring-emerald-200" : "border-stone-200/80"
@@ -233,19 +203,19 @@ export function RegisterSale() {
           )}
 
           {cartItems.length > 0 && (
-            <div className="mx-4 mb-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 ring-1 ring-emerald-200/60">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
-                Compra actual
-              </p>
-              <div className="mt-1 flex items-end justify-between gap-2">
-                <p className="text-3xl font-bold tabular-nums text-emerald-800">
-                  {formatMoney(cartTotal, symbol)}
+            <div className="mx-4 mb-4 rounded-xl bg-emerald-50/80 px-3 py-2 ring-1 ring-emerald-200/50">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-emerald-700">
+                  Compra actual
                 </p>
-                <p className="mb-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                <p className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
                   {cartItems.length}{" "}
                   {cartItems.length === 1 ? "artículo" : "artículos"}
                 </p>
               </div>
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-emerald-800">
+                {formatMoney(cartTotal, symbol)}
+              </p>
             </div>
           )}
         </section>
