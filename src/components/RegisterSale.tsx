@@ -220,7 +220,7 @@ export function RegisterSale() {
           )}
         </section>
 
-        <div className="rounded-3xl bg-gradient-to-b from-stone-100/90 to-stone-50 px-4 py-6 ring-1 ring-stone-200/60">
+        <div className="rounded-3xl bg-white px-4 py-6">
           <CalculatorKeypad
             onDigit={onDigit}
             onDecimal={onDecimal}
