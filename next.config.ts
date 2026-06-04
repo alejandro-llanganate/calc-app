@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: appRoot,
   },
+  serverExternalPackages: ["jspdf"],
 };
 
 export default nextConfig;

@@ -234,13 +234,22 @@ export function RegisterSale() {
             </div>
           )}
 
-          {cartItems.length > 0 && (
-            <p className="mt-2 text-sm text-emerald-700">
-              Compra actual: {formatMoney(cartTotal, symbol)} ·{" "}
-              {cartItems.length}{" "}
-              {cartItems.length === 1 ? "artículo" : "artículos"}
+        {cartItems.length > 0 && (
+          <div className="mt-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+              Compra actual
             </p>
-          )}
+            <div className="mt-0.5 flex items-baseline justify-between gap-2">
+              <p className="text-3xl font-bold tabular-nums text-emerald-800">
+                {formatMoney(cartTotal, symbol)}
+              </p>
+              <p className="text-sm font-medium text-emerald-700">
+                {cartItems.length}{" "}
+                {cartItems.length === 1 ? "artículo" : "artículos"}
+              </p>
+            </div>
+          </div>
+        )}
         </section>
 
         <CalculatorKeypad
@@ -251,6 +260,15 @@ export function RegisterSale() {
           onAddItem={addItem}
           addDisabled={!canAdd}
         />
+
+        {cartItems.length > 0 && (
+          <div className="flex items-center justify-between rounded-xl bg-emerald-600 px-4 py-3 text-white shadow-sm">
+            <span className="text-sm font-medium">Total compra actual</span>
+            <span className="text-2xl font-bold tabular-nums">
+              {formatMoney(cartTotal, symbol)}
+            </span>
+          </div>
+        )}
 
         <button
           type="button"
