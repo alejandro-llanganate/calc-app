@@ -13,9 +13,10 @@
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(180deg, #f5f5f4 0%, #fafaf9 120px, #fafaf9 100%);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .safe-bottom {

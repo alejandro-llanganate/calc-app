@@ -143,7 +143,7 @@ export function RegisterSale() {
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div id={CAJA_TOP_ID} className="scroll-mt-[4.5rem] space-y-3">
-        <header className="flex items-center justify-between gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-white">
+        <header className="flex items-center justify-between gap-2 rounded-2xl bg-gradient-to-r from-emerald-700 to-emerald-600 px-3.5 py-2.5 text-white shadow-sm shadow-emerald-900/10">
           <div className="min-w-0">
             <p className="truncate text-xs font-medium text-emerald-100">
               {settings.storeName}
@@ -161,10 +161,10 @@ export function RegisterSale() {
           <button
             type="button"
             onClick={() => toggleItemDetails(!detailMode)}
-            className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold transition-all ${
               detailMode
-                ? "bg-white text-emerald-800"
-                : "bg-emerald-600/80 text-emerald-100 ring-1 ring-emerald-500/60"
+                ? "bg-white text-emerald-800 shadow-sm"
+                : "bg-white/15 text-emerald-50 ring-1 ring-white/25 backdrop-blur-sm"
             }`}
           >
             {detailMode ? "Detalle ON" : "Detalle OFF"}
@@ -172,14 +172,14 @@ export function RegisterSale() {
         </header>
 
         <section
-          className={`rounded-2xl border-2 bg-white px-4 py-4 shadow-sm transition-colors ${
-            flash ? "border-emerald-400" : "border-stone-200"
+          className={`overflow-hidden rounded-3xl border bg-white shadow-[0_8px_30px_rgba(28,25,23,0.06)] transition-all ${
+            flash ? "border-emerald-400 ring-2 ring-emerald-200" : "border-stone-200/80"
           }`}
         >
           {detailMode && (
-            <div className="mb-3 space-y-2 border-b border-stone-100 pb-3">
+            <div className="space-y-2 border-b border-stone-100 bg-stone-50/80 px-4 py-3">
               <label className="block">
-                <span className="text-xs text-stone-500">
+                <span className="text-xs font-medium text-stone-500">
                   Nombre del producto (opcional)
                 </span>
                 <input
@@ -187,38 +187,43 @@ export function RegisterSale() {
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
                   placeholder="Ej. Arroz 1kg"
-                  className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2.5 text-base text-stone-900 outline-none focus:border-emerald-500"
+                  className="mt-1.5 w-full rounded-xl border-0 bg-white px-3 py-2.5 text-base text-stone-900 shadow-sm ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-emerald-400"
                 />
               </label>
-              <label className="flex items-center gap-2 text-sm text-stone-700">
+              <label className="flex items-center gap-2 text-sm text-stone-600">
                 <input
                   type="checkbox"
                   checked={saveToCatalog}
                   onChange={(e) => setSaveToCatalog(e.target.checked)}
-                  className="h-4 w-4 rounded border-stone-300 text-emerald-600"
+                  className="h-4 w-4 rounded-full border-stone-300 text-emerald-600 focus:ring-emerald-500"
                 />
                 Guardar en catálogo
               </label>
             </div>
           )}
 
-          <p className="mb-1 text-xs text-stone-500">Monto</p>
-          <AmountInput
-            id={AMOUNT_INPUT_ID}
-            value={input}
-            onChange={setInput}
-            onDigit={onDigit}
-            onDecimal={onDecimal}
-            onBackspace={onBackspace}
-            onEnter={addItem}
-            symbol={symbol}
-            size="lg"
-            placeholder="0"
-            autoFocus
-          />
+          <div className="px-4 pt-4 pb-2">
+            <p className="mb-2 text-center text-[11px] font-medium uppercase tracking-widest text-stone-400">
+              Monto
+            </p>
+            <AmountInput
+              id={AMOUNT_INPUT_ID}
+              value={input}
+              onChange={setInput}
+              onDigit={onDigit}
+              onDecimal={onDecimal}
+              onBackspace={onBackspace}
+              onEnter={addItem}
+              symbol={symbol}
+              size="lg"
+              variant="display"
+              placeholder="0"
+              autoFocus
+            />
+          </div>
 
           {detailMode && suggestions.length > 0 && (
-            <div className="mt-3 border-t border-stone-100 pt-3">
+            <div className="mx-4 mb-3 border-t border-stone-100 pt-3">
               <ProductSuggestions
                 products={suggestions}
                 currencySymbol={symbol}
@@ -228,15 +233,15 @@ export function RegisterSale() {
           )}
 
           {cartItems.length > 0 && (
-            <div className="mt-3 rounded-xl border-2 border-emerald-500 bg-emerald-50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+            <div className="mx-4 mb-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 ring-1 ring-emerald-200/60">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
                 Compra actual
               </p>
-              <div className="mt-0.5 flex items-baseline justify-between gap-2">
-                <p className="text-2xl font-bold tabular-nums text-emerald-800 sm:text-3xl">
+              <div className="mt-1 flex items-end justify-between gap-2">
+                <p className="text-3xl font-bold tabular-nums text-emerald-800">
                   {formatMoney(cartTotal, symbol)}
                 </p>
-                <p className="text-sm font-medium text-emerald-700">
+                <p className="mb-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
                   {cartItems.length}{" "}
                   {cartItems.length === 1 ? "artículo" : "artículos"}
                 </p>
@@ -245,20 +250,22 @@ export function RegisterSale() {
           )}
         </section>
 
-        <CalculatorKeypad
-          onDigit={onDigit}
-          onDecimal={onDecimal}
-          onBackspace={onBackspace}
-          onClear={onClear}
-          onAddItem={addItem}
-          addDisabled={!canAdd}
-        />
+        <div className="rounded-3xl bg-gradient-to-b from-stone-100/90 to-stone-50 px-4 py-6 ring-1 ring-stone-200/60">
+          <CalculatorKeypad
+            onDigit={onDigit}
+            onDecimal={onDecimal}
+            onBackspace={onBackspace}
+            onClear={onClear}
+            onAddItem={addItem}
+            addDisabled={!canAdd}
+          />
+        </div>
 
         <button
           type="button"
           onClick={finishPurchase}
           disabled={cartItems.length === 0}
-          className="w-full rounded-2xl bg-stone-900 py-3.5 text-lg font-semibold text-white active:bg-stone-800 disabled:bg-stone-300 disabled:text-stone-500"
+          className="w-full rounded-full bg-gradient-to-r from-stone-800 to-stone-900 py-4 text-lg font-semibold text-white shadow-[0_6px_20px_rgba(28,25,23,0.25)] transition-all active:scale-[0.98] disabled:from-stone-300 disabled:to-stone-300 disabled:text-stone-500 disabled:shadow-none"
         >
           Finalizar compra
         </button>
@@ -266,9 +273,9 @@ export function RegisterSale() {
 
       <section
         id="detalle-compra"
-        className="scroll-mt-[4.5rem] space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm"
+        className="scroll-mt-[4.5rem] space-y-4 rounded-3xl border border-stone-200/80 bg-white p-5 shadow-[0_4px_20px_rgba(28,25,23,0.05)]"
       >
-        <div className="border-b border-stone-100 pb-3">
+        <div className="border-b border-stone-100 pb-4">
           <h2 className="text-lg font-semibold text-stone-900">
             Detalle de la compra
           </h2>
@@ -278,7 +285,7 @@ export function RegisterSale() {
           <button
             type="button"
             onClick={scrollToCaja}
-            className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-medium text-emerald-800 active:bg-emerald-100"
+            className="mt-3 w-full rounded-full border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 py-3 text-sm font-semibold text-emerald-800 shadow-sm active:scale-[0.98]"
           >
             ↑ Volver a la calculadora
           </button>

@@ -22,6 +22,7 @@ type Props = {
   placeholder?: string;
   autoFocus?: boolean;
   size?: "md" | "lg";
+  variant?: "light" | "display";
   id?: string;
 };
 
@@ -37,10 +38,12 @@ export function AmountInput({
   placeholder = "0",
   autoFocus = false,
   size = "md",
+  variant = "light",
   id,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const textSize = size === "lg" ? "text-4xl sm:text-5xl" : "text-lg";
+  const textSize = size === "lg" ? "text-4xl sm:text-[2.75rem]" : "text-lg";
+  const isDisplay = variant === "display";
 
   useEffect(() => {
     if (autoFocus) {
@@ -87,12 +90,20 @@ export function AmountInput({
 
   return (
     <div
-      className={`flex cursor-text items-baseline justify-end gap-2 rounded-xl border border-transparent px-2 py-1 focus-within:border-emerald-400 focus-within:bg-emerald-50/40 ${className}`}
+      className={`flex cursor-text items-baseline justify-end gap-2 rounded-2xl px-3 py-3 transition-colors ${
+        isDisplay
+          ? "bg-gradient-to-br from-stone-800 to-stone-900 shadow-inner ring-1 ring-stone-700/50"
+          : "border border-transparent focus-within:border-emerald-400 focus-within:bg-emerald-50/40"
+      } ${className}`}
       onClick={() => inputRef.current?.focus()}
     >
       {symbol && (
         <span
-          className={`shrink-0 text-stone-500 ${size === "lg" ? "text-2xl" : "text-lg"}`}
+          className={`shrink-0 font-medium ${
+            isDisplay
+              ? "text-xl text-emerald-400/90 sm:text-2xl"
+              : `text-stone-500 ${size === "lg" ? "text-2xl" : "text-lg"}`
+          }`}
         >
           {symbol}
         </span>
@@ -110,7 +121,11 @@ export function AmountInput({
         placeholder={placeholder}
         onChange={(e) => onChange(formatAmountDisplay(e.target.value))}
         onKeyDown={handleKeyDown}
-        className={`min-w-[4ch] flex-1 border-0 bg-transparent text-right font-mono font-semibold text-stone-900 tabular-nums outline-none ${textSize}`}
+        className={`min-w-[3ch] flex-1 border-0 bg-transparent text-right font-mono font-semibold tabular-nums outline-none ${textSize} ${
+          isDisplay
+            ? "text-white placeholder:text-stone-500"
+            : "text-stone-900"
+        }`}
       />
     </div>
   );
