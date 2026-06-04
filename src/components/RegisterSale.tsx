@@ -146,35 +146,32 @@ export function RegisterSale() {
 
   return (
     <div className="flex flex-1 flex-col gap-3 pb-24">
-      <header className="shrink-0 rounded-2xl bg-emerald-700 px-4 py-4 text-white shadow-md">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-medium text-emerald-100">
-              {settings.storeName}
-            </p>
-            <p className="mt-1 text-xs text-emerald-200">Total del día</p>
-            <p
-              className={`mt-0.5 text-3xl font-bold tracking-tight transition-transform sm:text-4xl ${flash ? "scale-105" : ""}`}
-            >
-              {formatMoney(todayTotal, symbol)}
-            </p>
-            <p className="mt-1 text-sm text-emerald-100">
-              {todayPurchases.length}{" "}
-              {todayPurchases.length === 1 ? "compra" : "compras"} hoy
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => toggleItemDetails(!detailMode)}
-            className={`shrink-0 rounded-xl px-3 py-2 text-xs font-medium transition-colors ${
-              detailMode
-                ? "bg-white text-emerald-800"
-                : "bg-emerald-600 text-emerald-100 ring-1 ring-emerald-500"
-            }`}
+      <header className="flex shrink-0 items-center justify-between gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-white">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-emerald-100">
+            {settings.storeName}
+          </p>
+          <p
+            className={`text-base font-semibold leading-tight transition-transform ${flash ? "scale-105" : ""}`}
           >
-            {detailMode ? "Detalle ON" : "Detalle OFF"}
-          </button>
+            {formatMoney(todayTotal, symbol)}
+            <span className="ml-1.5 text-xs font-normal text-emerald-200">
+              · {todayPurchases.length}{" "}
+              {todayPurchases.length === 1 ? "compra" : "compras"}
+            </span>
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => toggleItemDetails(!detailMode)}
+          className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium transition-colors ${
+            detailMode
+              ? "bg-white text-emerald-800"
+              : "bg-emerald-600/80 text-emerald-100 ring-1 ring-emerald-500/60"
+          }`}
+        >
+          {detailMode ? "Detalle ON" : "Detalle OFF"}
+        </button>
       </header>
 
       <div className="sticky top-0 z-10 -mx-4 space-y-3 bg-stone-50 px-4 pb-3 pt-1">
