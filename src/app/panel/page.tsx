@@ -13,7 +13,7 @@ import {
   debtPendingAmount,
   debtsToChartPoints,
 } from "@/lib/debts";
-import { formatDateLabel, formatDateTimeFull, formatMoney } from "@/lib/format";
+import { formatDateLabel, formatDayChartTick, formatDateTimeFull, formatMoney } from "@/lib/format";
 import {
   formatChartWhatsApp,
   formatFullReportWhatsApp,
@@ -107,21 +107,26 @@ export default function PanelPage() {
   const { chartReport, chartTitle, chartSubtitle, periodTotal, periodCount } =
     useMemo(() => {
       switch (period) {
-        case "today":
+        case "today": {
+          const todayTick = formatDayChartTick(todayKey);
           return {
             chartReport: [
               {
                 key: todayKey,
-                label: "Hoy",
+                label: todayTick.full,
+                shortLabel: todayTick.axis,
+                weekday: todayTick.weekday,
+                dayNum: todayTick.dayNum,
                 total: todayTotal,
                 count: todayPurchases.length,
               },
             ],
             chartTitle: "Ventas de hoy",
-            chartSubtitle: formatDateLabel(todayKey),
+            chartSubtitle: todayTick.full,
             periodTotal: todayTotal,
             periodCount: todayPurchases.length,
           };
+        }
         case "hourly":
           return {
             chartReport: hourlyReport,
@@ -351,7 +356,7 @@ export default function PanelPage() {
           total={formatMoney(periodTotal, symbol)}
           hint={
             peak && peak.total > 0
-              ? `Pico: ${peak.label} (${formatMoney(peak.total, symbol)})`
+              ? `Pico: ${peak.label} · ${formatMoney(peak.total, symbol)}`
               : undefined
           }
           onShareWhatsApp={shareChart}
@@ -396,9 +401,9 @@ export default function PanelPage() {
               period === "daily" || period === "custom" ? "shortLabel" : "label"
             }
             scrollable={period === "daily" || period === "custom"}
-            barSlotWidth={period === "hourly" ? 32 : 52}
+            barSlotWidth={period === "hourly" ? 32 : 64}
             xInterval={period === "hourly" ? 1 : 0}
-            height={320}
+            height={340}
             emptyMessage="Sin ventas en este periodo"
           />
         </ReportSection>

@@ -20,6 +20,7 @@ import type {
 } from "@/lib/types";
 import { summarizeDebts } from "@/lib/debts";
 import { findProductByName } from "@/lib/products";
+import { asUuidOrNull } from "@/lib/id";
 import {
   deactivateCashierUser,
   deleteDebt,
@@ -186,7 +187,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
       const purchase: Purchase = {
         id: newId(),
-        items: items.map((item) => ({ ...item, id: item.id || newId() })),
+        items: items.map((item) => ({
+          ...item,
+          id: newId(),
+          productId: asUuidOrNull(item.productId) ?? undefined,
+        })),
         total: purchaseTotal(items),
         createdAt: new Date().toISOString(),
         registeredBy: user.name,

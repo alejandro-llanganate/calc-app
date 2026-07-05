@@ -12,9 +12,7 @@ import { DEFAULT_CASHIER_USERS, DEFAULT_SETTINGS } from "@/lib/types";
 import { LOCAL_STORE_ID_KEY } from "./config";
 import { supabase } from "./client";
 
-export function newId(): string {
-  return crypto.randomUUID();
-}
+import { asUuidOrNull, generateId as newId, isValidUuid } from "@/lib/id";
 
 type DbStore = {
   id: string;
@@ -305,10 +303,12 @@ export async function insertPurchase(
   storeId: string,
   purchase: Purchase,
 ): Promise<void> {
+  const purchaseId = isValidUuid(purchase.id) ? purchase.id : newId();
+
   const { error: purchaseError } = await supabase.from("purchases").insert({
-    id: purchase.id,
+    id: purchaseId,
     store_id: storeId,
-    cashier_user_id: purchase.registeredById ?? null,
+    cashier_user_id: asUuidOrNull(purchase.registeredById),
     registered_by_name: purchase.registeredBy ?? null,
     total: purchase.total,
     payment_method: purchase.paymentMethod ?? null,
@@ -320,9 +320,9 @@ export async function insertPurchase(
   if (purchase.items.length > 0) {
     const { error: itemsError } = await supabase.from("purchase_items").insert(
       purchase.items.map((item, index) => ({
-        id: item.id,
-        purchase_id: purchase.id,
-        product_id: item.productId ?? null,
+        id: isValidUuid(item.id) ? item.id : newId(),
+        purchase_id: purchaseId,
+        product_id: asUuidOrNull(item.productId),
         amount: item.amount,
         note: item.note ?? null,
         sort_order: index,
@@ -347,9 +347,9 @@ export async function replacePurchaseItems(
 
   const { error: insertError } = await supabase.from("purchase_items").insert(
     items.map((item, index) => ({
-      id: item.id,
+      id: isValidUuid(item.id) ? item.id : newId(),
       purchase_id: purchaseId,
-      product_id: item.productId ?? null,
+      product_id: asUuidOrNull(item.productId),
       amount: item.amount,
       note: item.note ?? null,
       sort_order: index,
@@ -519,3 +519,5 @@ export async function loadAllStoreData(storeId: string): Promise<{
 
   return { cashierUsers, products, purchases, debts };
 }
+
+export { newId };

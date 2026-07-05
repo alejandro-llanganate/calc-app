@@ -6,6 +6,7 @@ import type {
   Purchase,
   PurchaseItem,
 } from "./types";
+import { generateId } from "./id";
 import { DEFAULT_CASHIER_USERS, DEFAULT_SETTINGS } from "./types";
 
 const KEYS = {
@@ -111,9 +112,8 @@ export function todayKey(): string {
   return `${y}-${m}-${day}`;
 }
 
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+
+export { generateId } from "./id";
 
 export function purchaseTotal(items: PurchaseItem[]): number {
   return items.reduce((sum, item) => sum + item.amount, 0);

@@ -1,4 +1,5 @@
 import type { Purchase } from "./types";
+import { formatDayChartTick } from "./format";
 import { purchaseDateKey, todayKey } from "./storage";
 
 export type ChartPoint = {
@@ -6,6 +7,10 @@ export type ChartPoint = {
   label: string;
   /** Etiqueta corta para el eje X (evita solapamiento) */
   shortLabel?: string;
+  /** Día de la semana corto (ej. Mié) */
+  weekday?: string;
+  /** Número del día (ej. 5) */
+  dayNum?: string;
   total: number;
   count: number;
 };
@@ -25,10 +30,13 @@ export function getDailyReport(
     const dayPurchases = purchases.filter(
       (p) => purchaseDateKey(p.createdAt) === key,
     );
+    const tick = formatDayChartTick(key);
     points.push({
       key,
-      label: d.toLocaleDateString("es", { weekday: "short", day: "numeric" }),
-      shortLabel: `${d.getDate()}/${d.getMonth() + 1}`,
+      label: tick.full,
+      shortLabel: tick.axis,
+      weekday: tick.weekday,
+      dayNum: tick.dayNum,
       total: dayPurchases.reduce((s, p) => s + p.total, 0),
       count: dayPurchases.length,
     });
@@ -139,13 +147,13 @@ export function getDailyReportForRange(
     const dayPurchases = purchases.filter(
       (p) => purchaseDateKey(p.createdAt) === key,
     );
+    const tick = formatDayChartTick(key);
     points.push({
       key,
-      label: cursor.toLocaleDateString("es", {
-        weekday: "short",
-        day: "numeric",
-      }),
-      shortLabel: `${cursor.getDate()}/${cursor.getMonth() + 1}`,
+      label: tick.full,
+      shortLabel: tick.axis,
+      weekday: tick.weekday,
+      dayNum: tick.dayNum,
       total: dayPurchases.reduce((s, p) => s + p.total, 0),
       count: dayPurchases.length,
     });

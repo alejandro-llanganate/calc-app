@@ -35,6 +35,45 @@ type InnerProps = {
   height: number;
 };
 
+function DayAxisTick({
+  x = 0,
+  y = 0,
+  index = 0,
+  data,
+}: {
+  x?: number;
+  y?: number;
+  index?: number;
+  data: ChartPoint[];
+}) {
+  const point = data[index];
+  if (!point?.weekday || !point?.dayNum) return null;
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        y={0}
+        dy={14}
+        textAnchor="middle"
+        fill="#78716c"
+        fontSize={11}
+      >
+        {point.weekday}
+      </text>
+      <text
+        y={0}
+        dy={30}
+        textAnchor="middle"
+        fill="#1a1a1a"
+        fontSize={13}
+        fontWeight={600}
+      >
+        {point.dayNum}
+      </text>
+    </g>
+  );
+}
+
 function ChartInner({
   data,
   currencySymbol,
@@ -45,21 +84,40 @@ function ChartInner({
   width,
   height,
 }: InnerProps) {
+  const useDayTicks = data.some((d) => d.weekday && d.dayNum);
+
   return (
     <BarChart
       width={width}
       height={height}
       data={data}
-      margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+      margin={{
+        top: 8,
+        right: 8,
+        left: 0,
+        bottom: useDayTicks ? 20 : 4,
+      }}
     >
       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
       <XAxis
         dataKey={xKey}
-        tick={{ fontSize: 10, fill: "#78716c" }}
+        tick={
+          useDayTicks
+            ? (props) => (
+                <DayAxisTick
+                  x={typeof props.x === "number" ? props.x : undefined}
+                  y={typeof props.y === "number" ? props.y : undefined}
+                  index={props.index}
+                  data={data}
+                />
+              )
+            : { fontSize: 10, fill: "#78716c" }
+        }
         axisLine={false}
         tickLine={false}
         interval={scrollable ? 0 : xInterval}
-        minTickGap={scrollable ? 10 : 6}
+        minTickGap={scrollable ? 8 : 6}
+        height={useDayTicks ? 48 : 30}
       />
       <YAxis
         tick={{ fontSize: 10, fill: "#78716c" }}
@@ -77,7 +135,7 @@ function ChartInner({
           const point = payload[0].payload as ChartPoint;
           const title =
             point.key.includes("-") && point.key.length === 10
-              ? formatDateLabel(point.key)
+              ? point.label || formatDateLabel(point.key)
               : point.label;
           return (
             <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm shadow-md">
@@ -97,7 +155,7 @@ function ChartInner({
         dataKey="total"
         fill={barColor}
         radius={[6, 6, 0, 0]}
-        maxBarSize={scrollable ? 32 : 28}
+        maxBarSize={scrollable ? 36 : 32}
       />
     </BarChart>
   );
@@ -111,7 +169,7 @@ export function SalesBarChart({
   xInterval = 0,
   xDataKey = "label",
   scrollable = false,
-  barSlotWidth = 48,
+  barSlotWidth = 56,
   height = 210,
 }: Props) {
   const hasSales = data.some((d) => d.total > 0);
@@ -142,7 +200,7 @@ export function SalesBarChart({
   };
 
   if (scrollable) {
-    const chartWidth = Math.max(data.length * barSlotWidth, 300);
+    const chartWidth = Math.max(data.length * barSlotWidth, 320);
     return (
       <div className="relative -mx-1">
         <div className="overflow-x-auto overscroll-x-contain px-1 pb-1">
@@ -160,7 +218,7 @@ export function SalesBarChart({
   }
 
   return (
-    <div className="w-full" style={{ height }}>
+    <div className="w-full" style={{ height: height + 12 }}>
       <ResponsiveContainer width="100%" height="100%">
         <ChartInner {...innerProps} scrollable={false} />
       </ResponsiveContainer>

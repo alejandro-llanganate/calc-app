@@ -111,6 +111,31 @@ export function formatDateLabel(dateKey: string): string {
   });
 }
 
+/** Etiquetas para gráficos diarios: nombre corto del día + número */
+export function formatDayChartTick(dateKey: string): {
+  weekday: string;
+  dayNum: string;
+  full: string;
+  axis: string;
+} {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const weekdayRaw = date
+    .toLocaleDateString("es", { weekday: "short" })
+    .replace(/\.$/, "");
+  const weekday =
+    weekdayRaw.charAt(0).toUpperCase() + weekdayRaw.slice(1);
+  const dayNum = String(date.getDate());
+  const full = formatDateLabel(dateKey);
+
+  return {
+    weekday,
+    dayNum,
+    full,
+    axis: `${weekday} ${dayNum}`,
+  };
+}
+
 export function formatDateTime(iso: string): string {
   const date = new Date(iso);
   const weekday = date.toLocaleDateString("es", { weekday: "long" });
