@@ -5,7 +5,7 @@ export type PurchaseItem = {
   productId?: string;
 };
 
-export type PaymentMethod = "cash" | "transfer";
+export type PaymentMethod = "cash" | "transfer" | "card" | "deuna";
 
 /** Compra completa guardada al pulsar Finalizar */
 export type Purchase = {

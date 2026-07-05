@@ -12,7 +12,7 @@ create extension if not exists "pgcrypto";
 -- -----------------------------------------------------------------------------
 -- Tipos enumerados
 -- -----------------------------------------------------------------------------
-create type public.payment_method as enum ('cash', 'transfer');
+create type public.payment_method as enum ('cash', 'transfer', 'card', 'deuna');
 create type public.debt_status as enum ('pending', 'paid');
 
 -- -----------------------------------------------------------------------------

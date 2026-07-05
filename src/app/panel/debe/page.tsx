@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { DebtPaymentModal } from "@/components/DebtPaymentModal";
 import { PageNav } from "@/components/PageNav";
 import { useAppData } from "@/context/AppDataProvider";
 import {
@@ -9,6 +10,7 @@ import {
   filterDebtsByStatus,
 } from "@/lib/debts";
 import { formatDateTimeFull, formatMoney } from "@/lib/format";
+import type { Debt } from "@/lib/types";
 
 type Filter = "all" | "pending" | "paid";
 
@@ -18,10 +20,12 @@ export default function DebePage() {
     settings,
     debts,
     debtSummary,
+    addDebtPayment,
     markDebtPaid,
     removeDebt,
   } = useAppData();
   const [filter, setFilter] = useState<Filter>("pending");
+  const [paymentDebt, setPaymentDebt] = useState<Debt | null>(null);
 
   const symbol = settings?.currencySymbol ?? "$";
 
@@ -44,6 +48,20 @@ export default function DebePage() {
 
   return (
     <AppShell>
+      <DebtPaymentModal
+        open={paymentDebt != null}
+        debt={paymentDebt}
+        currencySymbol={symbol}
+        onClose={() => setPaymentDebt(null)}
+        onSubmit={(amount) => {
+          if (paymentDebt) addDebtPayment(paymentDebt.id, amount);
+        }}
+        onPayFull={() => {
+          if (paymentDebt) markDebtPaid(paymentDebt.id);
+          setPaymentDebt(null);
+        }}
+      />
+
       <div className="flex flex-1 flex-col gap-6">
         <PageNav
           backHref="/"
@@ -55,8 +73,8 @@ export default function DebePage() {
         <div>
           <h1 className="text-3xl font-semibold text-[#1a1a1a]">Debe</h1>
           <p className="mt-1 text-sm text-[var(--calc-muted)]">
-            Fiados y créditos. Al marcar pagado el registro permanece en el
-            historial.
+            Fiados y créditos. Puedes registrar abonos parciales o pagar el
+            total.
           </p>
         </div>
 
@@ -101,7 +119,7 @@ export default function DebePage() {
         </div>
 
         <section className="overflow-hidden rounded-xl border border-[var(--calc-border)] bg-white shadow-sm">
-          <div className="hidden border-b border-[var(--calc-border)] bg-[#faf9f8] px-5 py-3 text-xs font-medium uppercase tracking-wide text-[var(--calc-muted)] lg:grid lg:grid-cols-[1fr_140px_140px_180px] lg:gap-4">
+          <div className="hidden border-b border-[var(--calc-border)] bg-[#faf9f8] px-5 py-3 text-xs font-medium uppercase tracking-wide text-[var(--calc-muted)] lg:grid lg:grid-cols-[1fr_140px_140px_220px] lg:gap-4">
             <span>Persona</span>
             <span className="text-right">Monto</span>
             <span className="text-right">Estado</span>
@@ -120,7 +138,7 @@ export default function DebePage() {
                 return (
                   <li
                     key={debt.id}
-                    className="px-5 py-4 lg:grid lg:grid-cols-[1fr_140px_140px_180px] lg:items-center lg:gap-4"
+                    className="px-5 py-4 lg:grid lg:grid-cols-[1fr_140px_140px_220px] lg:items-center lg:gap-4"
                   >
                     <div className="min-w-0">
                       <p className="text-lg font-medium text-[#1a1a1a]">
@@ -137,6 +155,11 @@ export default function DebePage() {
                       {debt.note && (
                         <p className="mt-1 text-sm text-[var(--calc-muted)]">
                           {debt.note}
+                        </p>
+                      )}
+                      {debt.amountPaid > 0 && !isPaid && (
+                        <p className="mt-1 text-xs text-emerald-700">
+                          Abonado: {formatMoney(debt.amountPaid, symbol)}
                         </p>
                       )}
                       {isPaid && debt.paidAt && (
@@ -168,13 +191,22 @@ export default function DebePage() {
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2 lg:mt-0 lg:justify-end">
                       {!isPaid && (
-                        <button
-                          type="button"
-                          onClick={() => markDebtPaid(debt.id)}
-                          className="rounded-lg bg-[var(--calc-accent)] px-3 py-1.5 text-sm font-medium text-white"
-                        >
-                          Pagado
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentDebt(debt)}
+                            className="rounded-lg border border-[var(--calc-accent)] px-3 py-1.5 text-sm font-medium text-[var(--calc-accent)]"
+                          >
+                            Abonar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => markDebtPaid(debt.id)}
+                            className="rounded-lg bg-[var(--calc-accent)] px-3 py-1.5 text-sm font-medium text-white"
+                          >
+                            Pagado total
+                          </button>
+                        </>
                       )}
                       <button
                         type="button"

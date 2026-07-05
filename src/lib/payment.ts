@@ -3,6 +3,8 @@ import type { PaymentMethod } from "./types";
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash: "Efectivo",
   transfer: "Transferencia",
+  card: "Tarjeta",
+  deuna: "DeUna",
 };
 
 export function formatPaymentMethod(method?: PaymentMethod): string | null {

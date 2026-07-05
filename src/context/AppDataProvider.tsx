@@ -18,7 +18,7 @@ import type {
   Purchase,
   PurchaseItem,
 } from "@/lib/types";
-import { summarizeDebts } from "@/lib/debts";
+import { debtPendingAmount, summarizeDebts } from "@/lib/debts";
 import { findProductByName } from "@/lib/products";
 import { asUuidOrNull } from "@/lib/id";
 import {
@@ -81,6 +81,7 @@ type AppDataContextValue = {
   debts: Debt[];
   debtSummary: ReturnType<typeof summarizeDebts>;
   addDebt: (debtorName: string, amount: number, note?: string) => Debt | null;
+  addDebtPayment: (id: string, amount: number) => void;
   markDebtPaid: (id: string) => void;
   removeDebt: (id: string) => void;
 };
@@ -297,8 +298,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const markDebtPaid = useCallback((id: string) => {
-    const paidAt = new Date().toISOString();
     setDebtsState((prev) => {
+      const debt = prev.find((d) => d.id === id);
+      if (!debt) return prev;
+      const pending = debtPendingAmount(debt);
+      if (pending <= 0) return prev;
+
+      const paidAt = new Date().toISOString();
       const next = prev.map((d) =>
         d.id === id
           ? {
@@ -306,6 +312,37 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
               status: "paid" as const,
               amountPaid: d.amount,
               paidAt,
+            }
+          : d,
+      );
+      const updated = next.find((d) => d.id === id);
+      if (updated) void updateDebt(updated).catch(console.error);
+      return next;
+    });
+  }, []);
+
+  const addDebtPayment = useCallback((id: string, amount: number) => {
+    if (amount <= 0) return;
+
+    setDebtsState((prev) => {
+      const debt = prev.find((d) => d.id === id);
+      if (!debt) return prev;
+
+      const pending = debtPendingAmount(debt);
+      const pay = Math.min(pending, Math.round(amount * 100) / 100);
+      if (pay <= 0) return prev;
+
+      const newPaid = Math.round((debt.amountPaid + pay) * 100) / 100;
+      const fullyPaid = newPaid >= debt.amount - 0.001;
+      const paidAt = fullyPaid ? new Date().toISOString() : debt.paidAt;
+
+      const next = prev.map((d) =>
+        d.id === id
+          ? {
+              ...d,
+              amountPaid: fullyPaid ? d.amount : newPaid,
+              status: fullyPaid ? ("paid" as const) : ("pending" as const),
+              paidAt: fullyPaid ? paidAt : d.paidAt,
             }
           : d,
       );
@@ -434,6 +471,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       debts,
       debtSummary,
       addDebt,
+      addDebtPayment,
       markDebtPaid,
       removeDebt,
     }),
@@ -465,6 +503,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       debts,
       debtSummary,
       addDebt,
+      addDebtPayment,
       markDebtPaid,
       removeDebt,
     ],

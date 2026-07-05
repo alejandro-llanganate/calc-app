@@ -22,6 +22,8 @@ const PAYMENT_OPTIONS: {
   { value: undefined, label: "Sin especificar" },
   { value: "cash", label: PAYMENT_METHOD_LABELS.cash },
   { value: "transfer", label: PAYMENT_METHOD_LABELS.transfer },
+  { value: "card", label: PAYMENT_METHOD_LABELS.card },
+  { value: "deuna", label: PAYMENT_METHOD_LABELS.deuna },
 ];
 
 export function ConfirmPurchaseModal({

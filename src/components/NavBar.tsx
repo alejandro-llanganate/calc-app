@@ -5,13 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Calculator,
-  LayoutDashboard,
   History,
   Settings,
   Menu,
   X,
   UserRound,
-  Users,
   Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -21,17 +19,13 @@ import { AddDebtModal } from "./AddDebtModal";
 
 const links: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Caja", icon: Calculator },
-  { href: "/panel", label: "Reportes", icon: LayoutDashboard },
   { href: "/panel/debe", label: "Debe", icon: Wallet },
-  { href: "/panel/usuarios", label: "Usuarios", icon: Users },
   { href: "/panel/historial", label: "Historial", icon: History },
   { href: "/panel/configuracion", label: "Ajustes", icon: Settings },
 ];
 
 const pageTitles: Record<string, string> = {
-  "/panel": "Reportes",
   "/panel/debe": "Debe",
-  "/panel/usuarios": "Usuarios",
   "/panel/historial": "Historial",
   "/panel/configuracion": "Ajustes",
 };
@@ -68,8 +62,7 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
   const isActive = (href: string) =>
     href === "/"
       ? pathname === "/"
-      : pathname === href ||
-        (href === "/panel" && pathname === "/panel");
+      : pathname === href || pathname.startsWith(`${href}/`);
 
   const headerTop = isCaja ? "4.5rem" : "3.75rem";
 

@@ -49,6 +49,7 @@ export function RegisterSale() {
     finalizePurchase,
     removePurchase,
     markDebtPaid,
+    addDebtPayment,
     removeDebt,
     upsertProduct,
   } = useAppData();
@@ -407,6 +408,7 @@ export function RegisterSale() {
                 currencySymbol={symbol}
                 compact
                 onRemovePurchase={removePurchase}
+                onAddDebtPayment={addDebtPayment}
                 onMarkDebtPaid={markDebtPaid}
                 onRemoveDebt={removeDebt}
                 emptyMessage="Aún no hay ventas ni debes registrados hoy."

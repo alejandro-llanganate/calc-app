@@ -21,6 +21,7 @@ export default function HistorialPage() {
     debts,
     purchasesForDate,
     removePurchase,
+    addDebtPayment,
     markDebtPaid,
     removeDebt,
   } = useAppData();
@@ -183,6 +184,7 @@ export default function HistorialPage() {
                   entries={entries}
                   currencySymbol={symbol}
                   onRemovePurchase={removePurchase}
+                  onAddDebtPayment={addDebtPayment}
                   onMarkDebtPaid={markDebtPaid}
                   onRemoveDebt={removeDebt}
                 />

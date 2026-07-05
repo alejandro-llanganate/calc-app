@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { Debt, Purchase } from "@/lib/types";
 import { debtPendingAmount } from "@/lib/debts";
 import { formatDateTimeFull, formatMoney } from "@/lib/format";
 import { formatPaymentMethod } from "@/lib/payment";
+import { DebtPaymentModal } from "./DebtPaymentModal";
 
 export type ActivityEntry =
   | { kind: "purchase"; id: string; at: string; purchase: Purchase }
@@ -16,6 +19,7 @@ type Props = {
   compact?: boolean;
   onRemovePurchase?: (id: string) => void;
   onUpdatePurchase?: (id: string, items: Purchase["items"]) => void;
+  onAddDebtPayment?: (id: string, amount: number) => void;
   onMarkDebtPaid?: (id: string) => void;
   onRemoveDebt?: (id: string) => void;
   emptyMessage?: string;
@@ -26,10 +30,13 @@ export function ActivityHistoryList({
   currencySymbol,
   compact,
   onRemovePurchase,
+  onAddDebtPayment,
   onMarkDebtPaid,
   onRemoveDebt,
   emptyMessage = "Sin movimientos en este día.",
 }: Props) {
+  const [paymentDebt, setPaymentDebt] = useState<Debt | null>(null);
+
   if (entries.length === 0) {
     return (
       <p
@@ -43,28 +50,53 @@ export function ActivityHistoryList({
   }
 
   return (
-    <ul className="divide-y divide-[var(--calc-border)]">
-      {entries.map((entry) =>
-        entry.kind === "purchase" ? (
-          <PurchaseRow
-            key={entry.id}
-            purchase={entry.purchase}
-            currencySymbol={currencySymbol}
-            compact={compact}
-            onRemove={onRemovePurchase}
-          />
-        ) : (
-          <DebtRow
-            key={entry.id}
-            debt={entry.debt}
-            currencySymbol={currencySymbol}
-            compact={compact}
-            onMarkPaid={onMarkDebtPaid}
-            onRemove={onRemoveDebt}
-          />
-        ),
+    <>
+      <ul className="divide-y divide-[var(--calc-border)]">
+        {entries.map((entry) =>
+          entry.kind === "purchase" ? (
+            <PurchaseRow
+              key={entry.id}
+              purchase={entry.purchase}
+              currencySymbol={currencySymbol}
+              compact={compact}
+              onRemove={onRemovePurchase}
+            />
+          ) : (
+            <DebtRow
+              key={entry.id}
+              debt={entry.debt}
+              currencySymbol={currencySymbol}
+              compact={compact}
+              onAbonar={
+                onAddDebtPayment
+                  ? () => setPaymentDebt(entry.debt)
+                  : undefined
+              }
+              onMarkPaid={onMarkDebtPaid}
+              onRemove={onRemoveDebt}
+            />
+          ),
+        )}
+      </ul>
+
+      {onAddDebtPayment && (
+        <DebtPaymentModal
+          open={paymentDebt != null}
+          debt={paymentDebt}
+          currencySymbol={currencySymbol}
+          onClose={() => setPaymentDebt(null)}
+          onSubmit={(amount) => {
+            if (paymentDebt) onAddDebtPayment(paymentDebt.id, amount);
+          }}
+          onPayFull={() => {
+            if (paymentDebt && onMarkDebtPaid) {
+              onMarkDebtPaid(paymentDebt.id);
+              setPaymentDebt(null);
+            }
+          }}
+        />
       )}
-    </ul>
+    </>
   );
 }
 
@@ -79,13 +111,37 @@ function PurchaseRow({
   compact?: boolean;
   onRemove?: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const paymentLabel = formatPaymentMethod(p.paymentMethod);
+  const canExpand = p.items.length > 0;
+
+  const detail = expanded && (
+    <ul className="mt-3 space-y-1.5 rounded-lg bg-[#faf9f8] p-3">
+      {p.items.map((item, i) => (
+        <li
+          key={item.id}
+          className="flex items-start justify-between gap-2 text-sm"
+        >
+          <span className="min-w-0 text-[#1a1a1a]">
+            {item.note || `Artículo ${i + 1}`}
+          </span>
+          <span className="shrink-0 font-medium tabular-nums">
+            {formatMoney(item.amount, currencySymbol)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
 
   if (compact) {
     return (
       <li className="py-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => canExpand && setExpanded(!expanded)}
+            className={`min-w-0 flex-1 text-left ${canExpand ? "cursor-pointer" : "cursor-default"}`}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex rounded-full bg-[#deecf9] px-2 py-0.5 text-[10px] font-semibold text-[var(--calc-accent)]">
                 Venta
@@ -107,11 +163,18 @@ function PurchaseRow({
             <p className="mt-1 text-2xl font-normal tabular-nums text-[#1a1a1a]">
               {formatMoney(p.total, currencySymbol)}
             </p>
-            <p className="mt-0.5 text-sm text-[var(--calc-muted)]">
-              {p.items.length}{" "}
-              {p.items.length === 1 ? "artículo" : "artículos"}
-            </p>
-          </div>
+            {canExpand && (
+              <p className="mt-0.5 flex items-center gap-1 text-sm text-[var(--calc-accent)]">
+                {p.items.length}{" "}
+                {p.items.length === 1 ? "artículo" : "artículos"}
+                {expanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </p>
+            )}
+          </button>
           {onRemove && (
             <button
               type="button"
@@ -122,48 +185,64 @@ function PurchaseRow({
             </button>
           )}
         </div>
+        {detail}
       </li>
     );
   }
 
   return (
-    <li className="grid gap-3 py-4 lg:grid-cols-[auto_1fr_auto_auto] lg:items-center lg:gap-6">
-      <span className="inline-flex w-fit rounded-full bg-[#deecf9] px-3 py-1 text-xs font-semibold text-[var(--calc-accent)]">
-        Venta
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm capitalize text-[var(--calc-muted)]">
-          {formatDateTimeFull(p.createdAt)}
-        </p>
-        {p.registeredBy && (
-          <p className="mt-0.5 text-sm text-[var(--calc-muted)]">
-            Por {p.registeredBy}
+    <li className="py-4">
+      <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto_auto] lg:items-start lg:gap-6">
+        <span className="inline-flex w-fit rounded-full bg-[#deecf9] px-3 py-1 text-xs font-semibold text-[var(--calc-accent)]">
+          Venta
+        </span>
+        <button
+          type="button"
+          onClick={() => canExpand && setExpanded(!expanded)}
+          className={`min-w-0 text-left ${canExpand ? "cursor-pointer" : "cursor-default"}`}
+        >
+          <p className="text-sm capitalize text-[var(--calc-muted)]">
+            {formatDateTimeFull(p.createdAt)}
           </p>
-        )}
-        {paymentLabel && (
-          <p className="mt-0.5 text-sm text-[var(--calc-muted)]">
-            Pago: {paymentLabel}
-          </p>
-        )}
-        <p className="mt-1 text-sm text-[var(--calc-muted)]">
-          {p.items.length}{" "}
-          {p.items.length === 1 ? "artículo" : "artículos"}
+          {p.registeredBy && (
+            <p className="mt-0.5 text-sm text-[var(--calc-muted)]">
+              Por {p.registeredBy}
+            </p>
+          )}
+          {paymentLabel && (
+            <p className="mt-0.5 text-sm text-[var(--calc-muted)]">
+              Pago: {paymentLabel}
+            </p>
+          )}
+          {canExpand && (
+            <p className="mt-1 flex items-center gap-1 text-sm text-[var(--calc-accent)]">
+              {p.items.length}{" "}
+              {p.items.length === 1 ? "artículo" : "artículos"} ·{" "}
+              {expanded ? "ocultar detalle" : "ver detalle"}
+              {expanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </p>
+          )}
+        </button>
+        <p className="text-2xl font-light tabular-nums text-[#1a1a1a] lg:text-right">
+          {formatMoney(p.total, currencySymbol)}
         </p>
+        <div className="flex gap-2 lg:justify-end">
+          {onRemove && (
+            <button
+              type="button"
+              onClick={() => onRemove(p.id)}
+              className="text-sm text-red-600 hover:underline"
+            >
+              Quitar
+            </button>
+          )}
+        </div>
       </div>
-      <p className="text-2xl font-light tabular-nums text-[#1a1a1a] lg:text-right">
-        {formatMoney(p.total, currencySymbol)}
-      </p>
-      <div className="flex gap-2 lg:justify-end">
-        {onRemove && (
-          <button
-            type="button"
-            onClick={() => onRemove(p.id)}
-            className="text-sm text-red-600 hover:underline"
-          >
-            Quitar
-          </button>
-        )}
-      </div>
+      {detail}
     </li>
   );
 }
@@ -172,12 +251,14 @@ function DebtRow({
   debt: d,
   currencySymbol,
   compact,
+  onAbonar,
   onMarkPaid,
   onRemove,
 }: {
   debt: Debt;
   currencySymbol: string;
   compact?: boolean;
+  onAbonar?: () => void;
   onMarkPaid?: (id: string) => void;
   onRemove?: (id: string) => void;
 }) {
@@ -199,6 +280,17 @@ function DebtRow({
 
   const actions = (
     <div className={`flex flex-wrap gap-2 ${compact ? "mt-2" : "lg:justify-end"}`}>
+      {!isPaid && onAbonar && (
+        <button
+          type="button"
+          onClick={onAbonar}
+          className={`rounded-lg border border-[var(--calc-accent)] text-[var(--calc-accent)] ${
+            compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm"
+          }`}
+        >
+          Abonar
+        </button>
+      )}
       {!isPaid && onMarkPaid && (
         <button
           type="button"
@@ -207,7 +299,7 @@ function DebtRow({
             compact ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm"
           }`}
         >
-          Marcar pagado
+          Pagado total
         </button>
       )}
       {onRemove && (
@@ -231,6 +323,13 @@ function DebtRow({
       )}
     </div>
   );
+
+  const paidInfo =
+    d.amountPaid > 0 && !isPaid ? (
+      <p className="mt-0.5 text-sm text-emerald-700">
+        Abonado: {formatMoney(d.amountPaid, currencySymbol)}
+      </p>
+    ) : null;
 
   if (compact) {
     return (
@@ -261,6 +360,7 @@ function DebtRow({
             <p className="mt-1 text-2xl font-normal tabular-nums text-[#1a1a1a]">
               {formatMoney(d.amount, currencySymbol)}
             </p>
+            {paidInfo}
             {!isPaid && (
               <p className="mt-0.5 text-sm font-medium text-orange-600">
                 Pendiente: {formatMoney(pending, currencySymbol)}
@@ -289,6 +389,7 @@ function DebtRow({
         {d.note && (
           <p className="mt-1 text-sm text-[var(--calc-muted)]">{d.note}</p>
         )}
+        {paidInfo}
         {isPaid && d.paidAt && (
           <p className="mt-1 text-xs text-emerald-700">
             Pagado · {formatDateTimeFull(d.paidAt)}
