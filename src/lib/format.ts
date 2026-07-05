@@ -68,6 +68,17 @@ export function appendAmountDecimal(current: string): string {
   return formatAmountDisplay(raw ? `${raw},` : "0,");
 }
 
+export function appendAmountDoubleZero(current: string): string {
+  const raw = normalizeAmountRaw(stripThousands(current));
+  if (!raw) return formatAmountDisplay("0,00");
+  if (raw.includes(",")) {
+    const [, dec = ""] = raw.split(",");
+    const next = (dec + "00").slice(0, 2);
+    return formatAmountDisplay(`${raw.split(",")[0]},${next}`);
+  }
+  return formatAmountDisplay(`${raw},00`);
+}
+
 export function backspaceAmount(current: string): string {
   const raw = normalizeAmountRaw(stripThousands(current));
   if (!raw) return "";
@@ -101,12 +112,30 @@ export function formatDateLabel(dateKey: string): string {
 }
 
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("es", {
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString("es", { weekday: "long" });
+  const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const rest = date.toLocaleString("es", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  });
+  return `${weekdayCap}, ${rest}`;
+}
+
+export function formatDateTimeFull(iso: string): string {
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString("es", { weekday: "long" });
+  const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const rest = date.toLocaleString("es", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
     second: "2-digit",
   });
+  return `${weekdayCap}, ${rest}`;
 }

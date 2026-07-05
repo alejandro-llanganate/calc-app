@@ -5,87 +5,127 @@ import { Delete, Plus } from "lucide-react";
 type KeypadProps = {
   onDigit: (digit: string) => void;
   onDecimal: () => void;
+  onDoubleZero?: () => void;
   onBackspace: () => void;
   onClear: () => void;
+  onMultiply: () => void;
   onAddItem: () => void;
+  onFinish?: () => void;
   addDisabled?: boolean;
+  finishDisabled?: boolean;
+  multiplyActive?: boolean;
+  className?: string;
 };
 
-const digitKeys = ["7", "8", "9", "4", "5", "6", "1", "2", "3"];
+const digitRows = [
+  ["7", "8", "9"],
+  ["4", "5", "6"],
+  ["1", "2", "3"],
+] as const;
 
-const BTN =
-  "flex items-center justify-center rounded-full bg-white font-semibold text-stone-800 ring-1 ring-stone-200 transition-all duration-150 select-none touch-manipulation active:scale-[0.88] active:bg-stone-50";
+const KEY =
+  "calc-key flex min-h-[3.25rem] items-center justify-center text-2xl font-normal text-[#1a1a1a] transition-colors select-none touch-manipulation sm:min-h-[3.5rem] sm:text-[1.65rem] lg:min-h-0 lg:h-full lg:text-[1.85rem] xl:text-[2rem]";
 
-const KEY_SIZE = "h-[5rem] w-[5rem] sm:h-[5.35rem] sm:w-[5.35rem]";
+const SYM =
+  "calc-key flex min-h-0 h-full items-center justify-center text-[3rem] font-light leading-none select-none touch-manipulation sm:text-[3.25rem] lg:text-[3.75rem] xl:text-[4.25rem]";
 
 export function CalculatorKeypad({
   onDigit,
   onDecimal,
+  onDoubleZero,
   onBackspace,
   onClear,
+  onMultiply,
   onAddItem,
+  onFinish,
   addDisabled,
+  finishDisabled,
+  multiplyActive,
+  className = "",
 }: KeypadProps) {
   return (
-    <div className="mx-auto w-full max-w-[21.5rem] bg-white sm:max-w-[23rem]">
-      <div className="grid grid-cols-4 items-center justify-items-center gap-x-3 gap-y-4 sm:gap-x-4 sm:gap-y-5">
-        <Key onClick={onClear} className="text-xl" aria-label="Limpiar">
-          C
-        </Key>
-        <Key onClick={onBackspace} aria-label="Borrar">
-          <Delete className="h-5 w-5" strokeWidth={2.25} />
-        </Key>
-        <Key onClick={onDecimal} className="text-xl" aria-label="Coma decimal">
-          ,
-        </Key>
-        <Key
-          onClick={onAddItem}
-          disabled={addDisabled}
-          className="row-span-2 h-[calc(10.5rem+1rem)] w-[5rem] text-emerald-600 disabled:text-stone-400 sm:h-[calc(11.2rem+1.25rem)] sm:w-[5.35rem]"
-          aria-label="Sumar artículo"
-        >
-          <Plus className="h-9 w-9" strokeWidth={2.5} />
-        </Key>
-
-        {digitKeys.map((d) => (
-          <Key key={d} onClick={() => onDigit(d)}>
-            {d}
-          </Key>
-        ))}
-
-        <Key
-          onClick={() => onDigit("0")}
-          className="col-span-2 h-[5rem] w-[10.75rem] max-w-none text-3xl sm:h-[5.35rem] sm:w-[11.5rem]"
-        >
-          0
-        </Key>
-      </div>
-    </div>
-  );
-}
-
-function Key({
-  children,
-  onClick,
-  className = "",
-  disabled,
-  ...rest
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  className?: string;
-  disabled?: boolean;
-  "aria-label"?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`${BTN} ${KEY_SIZE} text-3xl disabled:text-stone-400 disabled:active:bg-white ${className}`}
-      {...rest}
+    <div
+      className={`grid flex-1 grid-cols-4 grid-rows-5 gap-px bg-[var(--calc-border)] ${className}`}
     >
-      {children}
-    </button>
+      <button type="button" onClick={onClear} className={`${KEY} calc-key-fn`}>
+        C
+      </button>
+      <button
+        type="button"
+        onClick={onBackspace}
+        aria-label="Borrar"
+        className={`${KEY} calc-key-fn`}
+      >
+        <Delete className="h-7 w-7 lg:h-8 lg:w-8" strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        onClick={onDoubleZero}
+        className={`${KEY} calc-key-fn text-lg`}
+        aria-label="Dos ceros"
+      >
+        00
+      </button>
+      <button
+        type="button"
+        onClick={onMultiply}
+        className={`${SYM} ${
+          multiplyActive
+            ? "bg-[#deecf9] text-[var(--calc-accent)] ring-1 ring-inset ring-[var(--calc-accent)]"
+            : "text-[var(--calc-muted)]"
+        }`}
+        aria-label="Multiplicar"
+      >
+        ×
+      </button>
+
+      {digitRows[0].map((d) => (
+        <button key={d} type="button" onClick={() => onDigit(d)} className={KEY}>
+          {d}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={onAddItem}
+        disabled={addDisabled}
+        className={`${KEY} calc-key-accent row-span-3 disabled:opacity-100`}
+        aria-label="Sumar artículo"
+      >
+        <Plus className="h-10 w-10 lg:h-11 lg:w-11" strokeWidth={1.5} />
+      </button>
+
+      {digitRows.slice(1).flatMap((row) =>
+        row.map((d) => (
+          <button key={d} type="button" onClick={() => onDigit(d)} className={KEY}>
+            {d}
+          </button>
+        )),
+      )}
+
+      <button
+        type="button"
+        onClick={() => onDigit("0")}
+        className={`${KEY} col-span-2`}
+      >
+        0
+      </button>
+      <button
+        type="button"
+        onClick={onDecimal}
+        className={`${SYM} text-[var(--calc-accent)]`}
+        aria-label="Coma decimal"
+      >
+        ,
+      </button>
+      <button
+        type="button"
+        onClick={onFinish}
+        disabled={finishDisabled}
+        className={`${SYM} calc-key-accent disabled:opacity-100`}
+        aria-label="Finalizar compra"
+      >
+        =
+      </button>
+    </div>
   );
 }

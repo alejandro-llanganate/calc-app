@@ -34,7 +34,7 @@ export function ScrollToTopButton({
           block: "start",
         });
       }}
-      className="fixed bottom-5 right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 px-5 text-sm font-semibold text-white shadow-[0_6px_24px_rgba(5,150,105,0.45)] transition-transform active:scale-90"
+      className="fixed bottom-5 right-4 z-40 flex h-11 items-center gap-2 rounded bg-[var(--calc-accent)] px-4 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,120,212,0.35)] transition-transform active:scale-95"
     >
       <ArrowUp className="h-4 w-4" />
       {label}

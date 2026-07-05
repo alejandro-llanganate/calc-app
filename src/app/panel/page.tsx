@@ -9,32 +9,75 @@ import {
 } from "@/components/ReportExportBar";
 import { SalesBarChart } from "@/components/SalesBarChart";
 import { useAppData } from "@/context/AppDataProvider";
-import { formatDateLabel, formatMoney } from "@/lib/format";
+import {
+  debtPendingAmount,
+  debtsToChartPoints,
+} from "@/lib/debts";
+import { formatDateLabel, formatDateTimeFull, formatMoney } from "@/lib/format";
 import {
   formatChartWhatsApp,
   formatFullReportWhatsApp,
   openWhatsApp,
+  type ReportPdfData,
 } from "@/lib/reportExport";
 import { downloadReportPdf } from "@/lib/reportPdf.client";
 import {
   getDailyReport,
+  getDailyReportForRange,
   getDaysWithPurchases,
   getHourlyReport,
   getMonthlyReport,
+  getWeeklyReport,
   peakPoint,
+  purchasesInRange,
   sumReport,
 } from "@/lib/report";
 import { todayKey as getTodayKey } from "@/lib/storage";
-import { CalendarDays, Clock, TrendingUp } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+
+type Period =
+  | "today"
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "custom";
+
+const PERIOD_TABS: { id: Period; label: string }[] = [
+  { id: "today", label: "Hoy" },
+  { id: "hourly", label: "Hora" },
+  { id: "daily", label: "Día" },
+  { id: "weekly", label: "Semana" },
+  { id: "monthly", label: "Mes" },
+  { id: "custom", label: "Rango" },
+];
 
 export default function PanelPage() {
-  const { ready, settings, todayTotal, todayPurchases, todayKey, purchases } =
-    useAppData();
+  const {
+    ready,
+    settings,
+    todayTotal,
+    todayPurchases,
+    todayKey,
+    purchases,
+    debts,
+    debtSummary,
+  } = useAppData();
+
+  const [period, setPeriod] = useState<Period>("daily");
+  const [hourlyDay, setHourlyDay] = useState(getTodayKey());
+  const [fromDate, setFromDate] = useState(getTodayKey());
+  const [toDate, setToDate] = useState(getTodayKey());
+
   const daysWithData = useMemo(
     () => getDaysWithPurchases(purchases),
     [purchases],
   );
-  const [hourlyDay, setHourlyDay] = useState(getTodayKey());
 
   const dailyReport = useMemo(
     () => getDailyReport(purchases, 14),
@@ -44,49 +87,154 @@ export default function PanelPage() {
     () => getHourlyReport(purchases, hourlyDay),
     [purchases, hourlyDay],
   );
+  const weeklyReport = useMemo(
+    () => getWeeklyReport(purchases, 8),
+    [purchases],
+  );
   const monthlyReport = useMemo(
     () => getMonthlyReport(purchases, 6),
     [purchases],
   );
+  const customReport = useMemo(
+    () => getDailyReportForRange(purchases, fromDate, toDate),
+    [purchases, fromDate, toDate],
+  );
+
+  const debtChart = useMemo(() => debtsToChartPoints(debts), [debts]);
 
   const symbol = settings?.currencySymbol ?? "$";
-  const dailyTotal = sumReport(dailyReport);
-  const monthlyTotal = sumReport(monthlyReport);
-  const hourlyTotal = sumReport(hourlyReport);
-  const bestDay = peakPoint(dailyReport.filter((d) => d.total > 0));
-  const bestHour = peakPoint(hourlyReport.filter((h) => h.total > 0));
-  const bestMonth = peakPoint(monthlyReport.filter((m) => m.total > 0));
-  const hasSales = purchases.length > 0;
 
+  const { chartReport, chartTitle, chartSubtitle, periodTotal, periodCount } =
+    useMemo(() => {
+      switch (period) {
+        case "today":
+          return {
+            chartReport: [
+              {
+                key: todayKey,
+                label: "Hoy",
+                total: todayTotal,
+                count: todayPurchases.length,
+              },
+            ],
+            chartTitle: "Ventas de hoy",
+            chartSubtitle: formatDateLabel(todayKey),
+            periodTotal: todayTotal,
+            periodCount: todayPurchases.length,
+          };
+        case "hourly":
+          return {
+            chartReport: hourlyReport,
+            chartTitle: "Ventas por hora",
+            chartSubtitle: formatDateLabel(hourlyDay),
+            periodTotal: sumReport(hourlyReport),
+            periodCount: hourlyReport.reduce((s, h) => s + h.count, 0),
+          };
+        case "weekly":
+          return {
+            chartReport: weeklyReport,
+            chartTitle: "Ventas por semana",
+            chartSubtitle: "Últimas 8 semanas",
+            periodTotal: sumReport(weeklyReport),
+            periodCount: weeklyReport.reduce((s, w) => s + w.count, 0),
+          };
+        case "monthly":
+          return {
+            chartReport: monthlyReport,
+            chartTitle: "Ventas por mes",
+            chartSubtitle: "Últimos 6 meses",
+            periodTotal: sumReport(monthlyReport),
+            periodCount: monthlyReport.reduce((s, m) => s + m.count, 0),
+          };
+        case "custom": {
+          const rangePurchases = purchasesInRange(
+            purchases,
+            fromDate,
+            toDate,
+          );
+          return {
+            chartReport: customReport,
+            chartTitle: "Ventas por fecha",
+            chartSubtitle: `${formatDateLabel(fromDate)} — ${formatDateLabel(toDate)}`,
+            periodTotal: rangePurchases.reduce((s, p) => s + p.total, 0),
+            periodCount: rangePurchases.length,
+          };
+        }
+        default:
+          return {
+            chartReport: dailyReport,
+            chartTitle: "Ventas por día",
+            chartSubtitle: "Últimos 14 días",
+            periodTotal: sumReport(dailyReport),
+            periodCount: dailyReport.reduce((s, d) => s + d.count, 0),
+          };
+      }
+    }, [
+      period,
+      todayKey,
+      todayTotal,
+      todayPurchases.length,
+      hourlyReport,
+      hourlyDay,
+      weeklyReport,
+      monthlyReport,
+      customReport,
+      fromDate,
+      toDate,
+      purchases,
+      dailyReport,
+    ]);
+
+  const peak = peakPoint(chartReport.filter((p) => p.total > 0));
   const hourlyDayOptions =
     daysWithData.length > 0 ? daysWithData : [getTodayKey()];
+  const hasSales = purchases.length > 0;
 
-  const pdfData = useMemo(
+  const pdfData: ReportPdfData = useMemo(
     () => ({
       storeName: settings?.storeName ?? "Mi tienda",
       symbol,
+      periodLabel: chartSubtitle,
       todayTotal,
       todayCount: todayPurchases.length,
-      dailyTotal,
+      periodTotal,
+      periodCount,
+      chartTitle,
+      chartReport,
       dailyReport,
-      hourlyTotal,
       hourlyDay,
       hourlyReport,
-      monthlyTotal,
+      weeklyReport,
       monthlyReport,
+      debtSummary,
+      debtChart,
+      debtsList: debts.map((d) => ({
+        name: d.debtorName,
+        amount: d.amount,
+        paid: d.amountPaid,
+        pending: debtPendingAmount(d),
+        status: d.status === "paid" ? "Pagado" : "Pendiente",
+        date: formatDateTimeFull(d.createdAt),
+      })),
     }),
     [
       settings?.storeName,
       symbol,
+      chartSubtitle,
       todayTotal,
       todayPurchases.length,
-      dailyTotal,
+      periodTotal,
+      periodCount,
+      chartTitle,
+      chartReport,
       dailyReport,
-      hourlyTotal,
       hourlyDay,
       hourlyReport,
-      monthlyTotal,
+      weeklyReport,
       monthlyReport,
+      debtSummary,
+      debtChart,
+      debts,
     ],
   );
 
@@ -98,53 +246,21 @@ export default function PanelPage() {
     openWhatsApp(formatFullReportWhatsApp(pdfData));
   }, [pdfData]);
 
-  const shareDaily = useCallback(() => {
+  const shareChart = useCallback(() => {
     openWhatsApp(
       formatChartWhatsApp({
-        title: "Ventas por día",
-        subtitle: "Últimos 14 días",
-        total: formatMoney(dailyTotal, symbol),
+        title: chartTitle,
+        subtitle: chartSubtitle,
+        total: formatMoney(periodTotal, symbol),
         symbol,
         hint:
-          bestDay && bestDay.total > 0
-            ? `Día más fuerte: ${formatDateLabel(bestDay.key)}`
+          peak && peak.total > 0
+            ? `Mejor: ${peak.label} (${formatMoney(peak.total, symbol)})`
             : undefined,
-        data: dailyReport,
+        data: chartReport,
       }),
     );
-  }, [dailyTotal, symbol, bestDay, dailyReport]);
-
-  const shareHourly = useCallback(() => {
-    openWhatsApp(
-      formatChartWhatsApp({
-        title: "Ventas por hora",
-        subtitle: formatDateLabel(hourlyDay),
-        total: formatMoney(hourlyTotal, symbol),
-        symbol,
-        hint:
-          bestHour && bestHour.total > 0
-            ? `Hora pico: ${bestHour.label}`
-            : undefined,
-        data: hourlyReport,
-      }),
-    );
-  }, [hourlyDay, hourlyTotal, symbol, bestHour, hourlyReport]);
-
-  const shareMonthly = useCallback(() => {
-    openWhatsApp(
-      formatChartWhatsApp({
-        title: "Ventas por mes",
-        subtitle: "Últimos 6 meses",
-        total: formatMoney(monthlyTotal, symbol),
-        symbol,
-        hint:
-          bestMonth && bestMonth.total > 0
-            ? `Mejor mes: ${bestMonth.label}`
-            : undefined,
-        data: monthlyReport,
-      }),
-    );
-  }, [monthlyTotal, symbol, bestMonth, monthlyReport]);
+  }, [chartTitle, chartSubtitle, periodTotal, symbol, peak, chartReport]);
 
   if (!ready) {
     return (
@@ -156,130 +272,176 @@ export default function PanelPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-1 flex-col gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-stone-900">Panel</h1>
-          <p className="mt-1 text-sm text-stone-600">
-            Reportes de ventas. La caja está en{" "}
-            <Link href="/" className="font-medium text-emerald-700 underline">
-              Caja
+      <div className="flex flex-1 flex-col gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--calc-border)] pb-5">
+          <div>
+            <h1 className="text-3xl font-semibold text-[#1a1a1a]">Reportes</h1>
+            <p className="mt-1 text-sm text-[var(--calc-muted)]">
+              Ingresos por periodo y resumen de fiados.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/"
+              className="rounded-lg border border-[var(--calc-border)] bg-white px-4 py-2 text-sm font-medium hover:bg-[#f3f2f1]"
+            >
+              Ir a la calculadora
             </Link>
-            .
-          </p>
+            <Link
+              href="/panel/debe"
+              className="rounded-lg bg-[#fff4ce] px-4 py-2 text-sm font-medium text-[#835c00]"
+            >
+              Ver Debe
+            </Link>
+            <ReportExportBar
+              compact
+              onDownloadPdf={handleDownloadPdf}
+              onShareFullWhatsApp={handleShareFullWhatsApp}
+              disabled={!hasSales && debts.length === 0}
+            />
+          </div>
         </div>
 
-        <ReportExportBar
-          onDownloadPdf={handleDownloadPdf}
-          onShareFullWhatsApp={handleShareFullWhatsApp}
-          disabled={!hasSales}
-        />
+        <div className="flex flex-wrap gap-1 rounded-xl bg-[#f3f2f1] p-1">
+          {PERIOD_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setPeriod(tab.id)}
+              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+                period === tab.id
+                  ? "bg-white text-[var(--calc-accent)] shadow-sm"
+                  : "text-[var(--calc-muted)] hover:text-[#1a1a1a]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Hoy"
             value={formatMoney(todayTotal, symbol)}
             detail={`${todayPurchases.length} compras`}
           />
           <StatCard
-            label="14 días"
-            value={formatMoney(dailyTotal, symbol)}
-            detail={
-              bestDay
-                ? `Mejor: ${formatDateLabel(bestDay.key)}`
-                : "Sin datos"
-            }
+            label="Periodo seleccionado"
+            value={formatMoney(periodTotal, symbol)}
+            detail={`${periodCount} compras`}
+          />
+          <StatCard
+            label="Por cobrar"
+            value={formatMoney(debtSummary.totalPending, symbol)}
+            detail={`${debtSummary.countPending} pendientes`}
+            accent="orange"
+          />
+          <StatCard
+            label="Fiados cobrados"
+            value={formatMoney(debtSummary.totalPaid, symbol)}
+            detail={`${debtSummary.countPaid} pagados`}
+            accent="green"
           />
         </div>
 
         <ReportSection
-          icon={CalendarDays}
-          title="Ventas por día"
-          subtitle="Últimos 14 días"
-          total={formatMoney(dailyTotal, symbol)}
+          icon={period === "hourly" ? Clock : CalendarDays}
+          title={chartTitle}
+          subtitle={chartSubtitle}
+          total={formatMoney(periodTotal, symbol)}
           hint={
-            bestDay && bestDay.total > 0
-              ? `Día más fuerte: ${formatDateLabel(bestDay.key)} (${formatMoney(bestDay.total, symbol)})`
+            peak && peak.total > 0
+              ? `Pico: ${peak.label} (${formatMoney(peak.total, symbol)})`
               : undefined
           }
-          onShareWhatsApp={shareDaily}
-          shareDisabled={!dailyReport.some((d) => d.total > 0)}
-        >
-          <SalesBarChart
-            data={dailyReport}
-            currencySymbol={symbol}
-            barColor="#059669"
-            xDataKey="shortLabel"
-            scrollable
-            barSlotWidth={48}
-            height={210}
-            emptyMessage="Registra compras en Caja para ver el gráfico diario"
-          />
-        </ReportSection>
-
-        <ReportSection
-          icon={Clock}
-          title="Ventas por hora"
-          subtitle={formatDateLabel(hourlyDay)}
-          total={formatMoney(hourlyTotal, symbol)}
-          hint={
-            bestHour && bestHour.total > 0
-              ? `Hora pico: ${bestHour.label} (${formatMoney(bestHour.total, symbol)})`
-              : undefined
-          }
-          onShareWhatsApp={shareHourly}
-          shareDisabled={!hourlyReport.some((h) => h.total > 0)}
+          onShareWhatsApp={shareChart}
+          shareDisabled={!chartReport.some((d) => d.total > 0)}
           action={
-            <select
-              value={hourlyDay}
-              onChange={(e) => setHourlyDay(e.target.value)}
-              className="rounded-lg border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-700"
+            period === "hourly" ? (
+              <select
+                value={hourlyDay}
+                onChange={(e) => setHourlyDay(e.target.value)}
+                className="rounded-lg border border-[var(--calc-border)] bg-white px-3 py-2 text-sm"
+              >
+                {hourlyDayOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {formatDateLabel(d)}
+                  </option>
+                ))}
+              </select>
+            ) : period === "custom" ? (
+              <div className="flex flex-wrap gap-2">
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="rounded-lg border border-[var(--calc-border)] px-3 py-2 text-sm"
+                />
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="rounded-lg border border-[var(--calc-border)] px-3 py-2 text-sm"
+                />
+              </div>
+            ) : undefined
+          }
+          className="xl:col-span-2"
+        >
+          <SalesBarChart
+            data={chartReport}
+            currencySymbol={symbol}
+            barColor="#0078d4"
+            xDataKey={
+              period === "daily" || period === "custom" ? "shortLabel" : "label"
+            }
+            scrollable={period === "daily" || period === "custom"}
+            barSlotWidth={period === "hourly" ? 32 : 52}
+            xInterval={period === "hourly" ? 1 : 0}
+            height={320}
+            emptyMessage="Sin ventas en este periodo"
+          />
+        </ReportSection>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <ReportSection
+            icon={Wallet}
+            title="Debes por persona"
+            subtitle="Montos pendientes de cobro"
+            total={formatMoney(debtSummary.totalPending, symbol)}
+            hint={`Prestado: ${formatMoney(debtSummary.totalLent, symbol)} · Cobrado: ${formatMoney(debtSummary.totalPaid, symbol)}`}
+          >
+            <SalesBarChart
+              data={debtChart}
+              currencySymbol={symbol}
+              barColor="#d83b01"
+              xDataKey="label"
+              height={280}
+              emptyMessage="No hay fiados pendientes"
+            />
+            <Link
+              href="/panel/debe"
+              className="mt-4 inline-flex rounded-lg bg-[#fff4ce] px-4 py-2 text-sm font-medium text-[#835c00]"
             >
-              {hourlyDayOptions.map((d) => (
-                <option key={d} value={d}>
-                  {formatDateLabel(d)}
-                </option>
-              ))}
-            </select>
-          }
-        >
-          <SalesBarChart
-            data={hourlyReport}
-            currencySymbol={symbol}
-            barColor="#0d9488"
-            xInterval={2}
-            emptyMessage="Sin ventas en este día"
-          />
-        </ReportSection>
+              Gestionar debes →
+            </Link>
+          </ReportSection>
 
-        <ReportSection
-          icon={TrendingUp}
-          title="Ventas por mes"
-          subtitle="Últimos 6 meses"
-          total={formatMoney(monthlyTotal, symbol)}
-          hint={
-            bestMonth && bestMonth.total > 0
-              ? `Mejor mes: ${bestMonth.label} (${formatMoney(bestMonth.total, symbol)})`
-              : undefined
-          }
-          onShareWhatsApp={shareMonthly}
-          shareDisabled={!monthlyReport.some((m) => m.total > 0)}
-        >
-          <SalesBarChart
-            data={monthlyReport}
-            currencySymbol={symbol}
-            barColor="#047857"
-            emptyMessage="Aún no hay ventas registradas por mes"
-          />
-        </ReportSection>
-
-        <section className="rounded-2xl border border-stone-200 bg-white p-4">
-          <h2 className="font-semibold text-stone-900">Accesos rápidos</h2>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <QuickLink href="/panel/historial" label="Historial" />
-            <QuickLink href="/panel/productos" label="Productos" />
-            <QuickLink href="/panel/configuracion" label="Ajustes" />
-          </div>
-        </section>
+          <ReportSection
+            icon={TrendingUp}
+            title="Tendencia mensual"
+            subtitle="Últimos 6 meses"
+            total={formatMoney(sumReport(monthlyReport), symbol)}
+          >
+            <SalesBarChart
+              data={monthlyReport}
+              currencySymbol={symbol}
+              barColor="#107c10"
+              height={280}
+              emptyMessage="Sin ventas por mes"
+            />
+          </ReportSection>
+        </div>
       </div>
     </AppShell>
   );
@@ -289,17 +451,31 @@ function StatCard({
   label,
   value,
   detail,
+  accent,
 }: {
   label: string;
   value: string;
   detail?: string;
+  accent?: "green" | "orange";
 }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4">
-      <p className="text-xs text-stone-500">{label}</p>
-      <p className="mt-1 text-xl font-bold text-stone-900">{value}</p>
+    <div className="rounded-xl border border-[var(--calc-border)] bg-white p-5 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--calc-muted)]">
+        {label}
+      </p>
+      <p
+        className={`mt-2 text-2xl font-light tabular-nums xl:text-3xl ${
+          accent === "green"
+            ? "text-emerald-700"
+            : accent === "orange"
+              ? "text-orange-600"
+              : "text-[#1a1a1a]"
+        }`}
+      >
+        {value}
+      </p>
       {detail && (
-        <p className="mt-1 truncate text-xs text-stone-600">{detail}</p>
+        <p className="mt-1 text-sm text-[var(--calc-muted)]">{detail}</p>
       )}
     </div>
   );
@@ -314,6 +490,7 @@ function ReportSection({
   action,
   onShareWhatsApp,
   shareDisabled,
+  className = "",
   children,
 }: {
   icon: typeof CalendarDays;
@@ -324,19 +501,24 @@ function ReportSection({
   action?: React.ReactNode;
   onShareWhatsApp?: () => void;
   shareDisabled?: boolean;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-start justify-between gap-2">
+    <section
+      className={`rounded-xl border border-[var(--calc-border)] bg-white p-6 shadow-sm ${className}`}
+    >
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 gap-3">
-          <Icon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#deecf9]">
+            <Icon className="h-5 w-5 text-[var(--calc-accent)]" />
+          </div>
           <div className="min-w-0">
-            <h2 className="font-semibold text-stone-900">{title}</h2>
-            <p className="text-xs text-stone-500">{subtitle}</p>
+            <h2 className="text-lg font-semibold text-[#1a1a1a]">{title}</h2>
+            <p className="text-sm text-[var(--calc-muted)]">{subtitle}</p>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {action}
           {onShareWhatsApp && (
             <ChartShareButtons
@@ -346,21 +528,14 @@ function ReportSection({
           )}
         </div>
       </div>
-      <p className="mb-1 text-2xl font-bold text-emerald-700">{total}</p>
-      {hint && <p className="mb-3 text-xs text-stone-500">{hint}</p>}
-      {!hint && <div className="mb-3" />}
+      <p className="mb-1 text-4xl font-light tabular-nums text-[var(--calc-accent)]">
+        {total}
+      </p>
+      {hint && (
+        <p className="mb-5 text-sm text-[var(--calc-muted)]">{hint}</p>
+      )}
+      {!hint && <div className="mb-5" />}
       {children}
     </section>
-  );
-}
-
-function QuickLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-xl border border-stone-100 px-3 py-2.5 text-center text-sm font-medium text-emerald-800 hover:bg-stone-50"
-    >
-      {label}
-    </Link>
   );
 }

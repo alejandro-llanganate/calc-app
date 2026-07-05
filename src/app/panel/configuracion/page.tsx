@@ -95,10 +95,9 @@ export default function ConfiguracionPage() {
           />
         </section>
 
-        <p className="text-xs text-stone-500">
-          Datos guardados solo en este dispositivo (localStorage). Para usar en
-          otro celular o tablet, abre la misma dirección y restaura un respaldo
-          desde Historial.
+        <p className="text-xs text-[var(--calc-muted)]">
+          Datos sincronizados con Supabase. El usuario activo en caja se guarda
+          solo en este dispositivo.
         </p>
       </div>
     </AppShell>

@@ -7,41 +7,56 @@ type Props = {
   items: PurchaseItem[];
   currencySymbol: string;
   onRemove?: (id: string) => void;
-  showNames?: boolean;
+  variant?: "default" | "microsoft";
 };
 
 export function CartItemsList({
   items,
   currencySymbol,
   onRemove,
+  variant = "default",
 }: Props) {
   if (items.length === 0) {
     return (
-      <p className="py-3 text-center text-sm text-stone-500">
+      <p
+        className={`py-4 text-center ${
+          variant === "microsoft"
+            ? "text-base text-[var(--calc-muted)]"
+            : "text-sm text-stone-500"
+        }`}
+      >
         Escribe un monto y pulsa + para sumar artículos.
       </p>
     );
   }
 
   return (
-    <ul className="divide-y divide-stone-100">
+    <ul
+      className={
+        variant === "microsoft"
+          ? "divide-y divide-[var(--calc-border)]"
+          : "divide-y divide-stone-100"
+      }
+    >
       {items.map((item, index) => (
         <li
           key={item.id}
-          className="flex items-center justify-between gap-2 py-2.5"
+          className="flex items-center justify-between gap-2 py-3"
         >
           <div className="min-w-0">
             {item.note ? (
               <>
-                <p className="font-medium text-stone-900">{item.note}</p>
-                <p className="text-sm text-stone-600">
+                <p className="text-base text-[#1a1a1a]">{item.note}</p>
+                <p className="text-lg font-medium tabular-nums text-[#1a1a1a]">
                   {formatMoney(item.amount, currencySymbol)}
                 </p>
               </>
             ) : (
               <>
-                <p className="text-sm text-stone-500">Artículo {index + 1}</p>
-                <p className="font-medium text-stone-900">
+                <p className="text-sm text-[var(--calc-muted)]">
+                  Artículo {index + 1}
+                </p>
+                <p className="text-lg font-medium tabular-nums text-[#1a1a1a]">
                   {formatMoney(item.amount, currencySymbol)}
                 </p>
               </>
@@ -51,7 +66,7 @@ export function CartItemsList({
             <button
               type="button"
               onClick={() => onRemove(item.id)}
-              className="shrink-0 rounded-lg px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+              className="shrink-0 px-2 py-1 text-sm text-[var(--calc-accent)] hover:underline"
             >
               Quitar
             </button>

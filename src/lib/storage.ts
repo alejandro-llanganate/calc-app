@@ -1,11 +1,21 @@
-import type { AppSettings, Product, Purchase, PurchaseItem } from "./types";
-import { DEFAULT_SETTINGS } from "./types";
+import type {
+  AppSettings,
+  CashierUser,
+  Debt,
+  Product,
+  Purchase,
+  PurchaseItem,
+} from "./types";
+import { DEFAULT_CASHIER_USERS, DEFAULT_SETTINGS } from "./types";
 
 const KEYS = {
   purchases: "ventas-calc:purchases",
   salesLegacy: "ventas-calc:sales",
   products: "ventas-calc:products",
   settings: "ventas-calc:settings",
+  users: "ventas-calc:users",
+  activeUser: "ventas-calc:active-user",
+  debts: "ventas-calc:debts",
 } as const;
 
 type LegacySale = {
@@ -107,4 +117,32 @@ export function generateId(): string {
 
 export function purchaseTotal(items: PurchaseItem[]): number {
   return items.reduce((sum, item) => sum + item.amount, 0);
+}
+
+export function getCashierUsers(): CashierUser[] {
+  const stored = readJson<CashierUser[]>(KEYS.users, []);
+  return stored.length > 0 ? stored : DEFAULT_CASHIER_USERS;
+}
+
+export function saveCashierUsers(users: CashierUser[]): void {
+  writeJson(KEYS.users, users);
+}
+
+export function getActiveUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(KEYS.activeUser);
+}
+
+export function setActiveUserId(userId: string | null): void {
+  if (typeof window === "undefined") return;
+  if (userId) localStorage.setItem(KEYS.activeUser, userId);
+  else localStorage.removeItem(KEYS.activeUser);
+}
+
+export function getDebts(): Debt[] {
+  return readJson<Debt[]>(KEYS.debts, []);
+}
+
+export function saveDebts(debts: Debt[]): void {
+  writeJson(KEYS.debts, debts);
 }

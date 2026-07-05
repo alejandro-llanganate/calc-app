@@ -22,8 +22,11 @@ type Props = {
   placeholder?: string;
   autoFocus?: boolean;
   size?: "md" | "lg";
-  variant?: "light" | "display";
+  variant?: "light" | "display" | "microsoft";
   id?: string;
+  hint?: string;
+  secondary?: string;
+  expression?: string;
 };
 
 export function AmountInput({
@@ -40,10 +43,18 @@ export function AmountInput({
   size = "md",
   variant = "light",
   id,
+  hint,
+  secondary,
+  expression,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const textSize = size === "lg" ? "text-4xl sm:text-[2.75rem]" : "text-lg";
+  const isMicrosoft = variant === "microsoft";
   const isDisplay = variant === "display";
+  const textSize = isMicrosoft
+    ? "text-[2.75rem] leading-none sm:text-[3.25rem] lg:text-[3.75rem] xl:text-[4.25rem]"
+    : size === "lg"
+      ? "text-4xl sm:text-[2.75rem]"
+      : "text-lg";
 
   useEffect(() => {
     if (autoFocus) {
@@ -87,6 +98,55 @@ export function AmountInput({
       onEnter?.();
     }
   };
+
+  if (isMicrosoft) {
+    return (
+      <div
+        className={`flex min-h-[7rem] flex-col justify-end px-4 pb-3 pt-2 lg:min-h-[10rem] lg:px-6 lg:pb-4 ${className}`}
+        onClick={() => inputRef.current?.focus()}
+      >
+        {expression && (
+          <p className="mb-1 truncate text-right text-sm text-[var(--calc-muted)] lg:text-base">
+            {expression}
+          </p>
+        )}
+        {(hint || secondary) && (
+          <div className="mb-1 text-right">
+            {hint && (
+              <p className="truncate text-xs text-[var(--calc-muted)]">{hint}</p>
+            )}
+            {secondary && (
+              <p className="truncate text-sm text-[var(--calc-muted)]">
+                {secondary}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex items-end justify-end gap-1">
+          {symbol && (
+            <span className="mb-1 shrink-0 text-xl text-[var(--calc-muted)] sm:text-2xl">
+              {symbol}
+            </span>
+          )}
+          <input
+            ref={inputRef}
+            id={id ?? AMOUNT_INPUT_ID}
+            type="text"
+            inputMode="decimal"
+            enterKeyHint="done"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            value={value}
+            placeholder={placeholder}
+            onChange={(e) => onChange(formatAmountDisplay(e.target.value))}
+            onKeyDown={handleKeyDown}
+            className={`min-w-[2ch] flex-1 border-0 bg-transparent text-right font-light tabular-nums text-[#1a1a1a] outline-none placeholder:text-[#c8c6c4] ${textSize}`}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

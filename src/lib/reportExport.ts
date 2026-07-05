@@ -1,4 +1,5 @@
 import type { ChartPoint } from "./report";
+import type { DebtSummary } from "./types";
 import { formatDateLabel, formatMoney } from "./format";
 
 export function openWhatsApp(text: string) {
@@ -44,56 +45,49 @@ export function formatChartWhatsApp(opts: {
   return lines.join("\n");
 }
 
-export function formatFullReportWhatsApp(opts: {
-  storeName: string;
-  symbol: string;
-  todayTotal: number;
-  todayCount: number;
-  dailyTotal: number;
-  dailyReport: ChartPoint[];
-  hourlyTotal: number;
-  hourlyDay: string;
-  hourlyReport: ChartPoint[];
-  monthlyTotal: number;
-  monthlyReport: ChartPoint[];
-}): string {
-  const { symbol } = opts;
-  const lines = [
-    `📈 *Reporte de ventas*`,
-    opts.storeName,
-    `Generado: ${new Date().toLocaleString("es")}`,
-    "",
-    `*Hoy:* ${formatMoney(opts.todayTotal, symbol)} (${opts.todayCount} compras)`,
-    `*14 días:* ${formatMoney(opts.dailyTotal, symbol)}`,
-    `*${formatDateLabel(opts.hourlyDay)}:* ${formatMoney(opts.hourlyTotal, symbol)}`,
-    `*6 meses:* ${formatMoney(opts.monthlyTotal, symbol)}`,
-    "",
-    "*Por día (con ventas):*",
-  ];
-
-  opts.dailyReport
-    .filter((d) => d.total > 0)
-    .slice(-7)
-    .forEach((d) => {
-      lines.push(
-        `• ${formatDateLabel(d.key)}: ${formatMoney(d.total, symbol)}`,
-      );
-    });
-
-  lines.push("", "_Caja Ventas_");
-  return lines.join("\n");
-}
-
 export type ReportPdfData = {
   storeName: string;
   symbol: string;
+  periodLabel: string;
   todayTotal: number;
   todayCount: number;
-  dailyTotal: number;
+  periodTotal: number;
+  periodCount: number;
+  chartTitle: string;
+  chartReport: ChartPoint[];
   dailyReport: ChartPoint[];
-  hourlyTotal: number;
   hourlyDay: string;
   hourlyReport: ChartPoint[];
-  monthlyTotal: number;
+  weeklyReport: ChartPoint[];
   monthlyReport: ChartPoint[];
+  debtSummary: DebtSummary;
+  debtChart: ChartPoint[];
+  debtsList: {
+    name: string;
+    amount: number;
+    paid: number;
+    pending: number;
+    status: string;
+    date: string;
+  }[];
 };
+
+export function formatFullReportWhatsApp(data: ReportPdfData): string {
+  const { symbol } = data;
+  const lines = [
+    `📈 *Reporte de ventas*`,
+    data.storeName,
+    data.periodLabel,
+    `Generado: ${new Date().toLocaleString("es")}`,
+    "",
+    `*Hoy:* ${formatMoney(data.todayTotal, symbol)} (${data.todayCount} compras)`,
+    `*Periodo:* ${formatMoney(data.periodTotal, symbol)} (${data.periodCount} compras)`,
+    "",
+    `*Debes — prestado:* ${formatMoney(data.debtSummary.totalLent, symbol)}`,
+    `*Cobrado:* ${formatMoney(data.debtSummary.totalPaid, symbol)}`,
+    `*Por cobrar:* ${formatMoney(data.debtSummary.totalPending, symbol)}`,
+    "",
+    "_Caja Ventas_",
+  ];
+  return lines.join("\n");
+}

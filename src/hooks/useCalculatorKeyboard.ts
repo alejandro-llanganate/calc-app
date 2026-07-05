@@ -8,6 +8,7 @@ type Options = {
   onDecimal: () => void;
   onBackspace: () => void;
   onClear: () => void;
+  onMultiply?: () => void;
   onEnter?: () => void;
   enabled?: boolean;
 };
@@ -18,6 +19,7 @@ export function useCalculatorKeyboard({
   onDecimal,
   onBackspace,
   onClear,
+  onMultiply,
   onEnter,
   enabled = true,
 }: Options) {
@@ -70,6 +72,13 @@ export function useCalculatorKeyboard({
         return;
       }
 
+      if (e.key === "*" || e.key === "x" || e.key === "X") {
+        e.preventDefault();
+        onMultiply?.();
+        document.getElementById(AMOUNT_INPUT_ID)?.focus();
+        return;
+      }
+
       if (e.key === "Enter") {
         e.preventDefault();
         onEnter?.();
@@ -78,5 +87,5 @@ export function useCalculatorKeyboard({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onDigit, onDecimal, onBackspace, onClear, onEnter, enabled]);
+  }, [onDigit, onDecimal, onBackspace, onClear, onMultiply, onEnter, enabled]);
 }

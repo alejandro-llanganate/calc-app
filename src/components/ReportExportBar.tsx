@@ -6,15 +6,40 @@ export function ReportExportBar({
   onDownloadPdf,
   onShareFullWhatsApp,
   disabled,
+  compact,
 }: {
   onDownloadPdf: () => void;
   onShareFullWhatsApp: () => void;
   disabled?: boolean;
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <ActionButton
+          icon={Download}
+          label="PDF"
+          onClick={onDownloadPdf}
+          disabled={disabled}
+          variant="primary"
+          compact
+        />
+        <ActionButton
+          icon={MessageCircle}
+          label="WhatsApp"
+          onClick={onShareFullWhatsApp}
+          disabled={disabled}
+          variant="whatsapp"
+          compact
+        />
+      </div>
+    );
+  }
+
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-4">
-      <h2 className="font-semibold text-stone-900">Exportar reportes</h2>
-      <p className="mt-1 text-xs text-stone-500">
+    <section className="rounded-xl border border-[var(--calc-border)] bg-white p-5 shadow-sm">
+      <h2 className="font-semibold text-[#1a1a1a]">Exportar reportes</h2>
+      <p className="mt-1 text-xs text-[var(--calc-muted)]">
         Descarga el resumen en PDF o compártelo por WhatsApp.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -49,7 +74,7 @@ export function ChartShareButtons({
       type="button"
       onClick={onShareWhatsApp}
       disabled={disabled}
-      className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 disabled:opacity-40 active:bg-emerald-100"
+      className="flex items-center gap-1.5 rounded-lg border border-[var(--calc-border)] bg-white px-3 py-2 text-xs font-medium text-[var(--calc-accent)] disabled:opacity-40 hover:bg-[#f3f2f1]"
     >
       <MessageCircle className="h-3.5 w-3.5" />
       WhatsApp
@@ -63,24 +88,28 @@ function ActionButton({
   onClick,
   disabled,
   variant,
+  compact,
 }: {
   icon: typeof Download;
   label: string;
   onClick: () => void;
   disabled?: boolean;
   variant: "primary" | "whatsapp";
+  compact?: boolean;
 }) {
   const styles =
     variant === "primary"
-      ? "bg-stone-900 text-white active:bg-stone-800"
-      : "border border-emerald-300 bg-emerald-50 text-emerald-800 active:bg-emerald-100";
+      ? "bg-[var(--calc-accent)] text-white hover:bg-[var(--calc-accent-hover)]"
+      : "border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100";
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex flex-1 min-w-[9rem] items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium disabled:opacity-40 ${styles}`}
+      className={`flex items-center justify-center gap-2 rounded-lg font-medium disabled:opacity-40 ${styles} ${
+        compact ? "px-4 py-2 text-sm" : "min-w-[9rem] flex-1 px-3 py-2.5 text-sm"
+      }`}
     >
       <Icon className="h-4 w-4" />
       {label}
