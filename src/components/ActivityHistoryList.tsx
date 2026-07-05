@@ -111,37 +111,52 @@ function PurchaseRow({
   compact?: boolean;
   onRemove?: (id: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const paymentLabel = formatPaymentMethod(p.paymentMethod);
-  const canExpand = p.items.length > 0;
 
-  const detail = expanded && (
-    <ul className="mt-3 space-y-1.5 rounded-lg bg-[#faf9f8] p-3">
-      {p.items.map((item, i) => (
-        <li
-          key={item.id}
-          className="flex items-start justify-between gap-2 text-sm"
-        >
-          <span className="min-w-0 text-[#1a1a1a]">
-            {item.note || `Artículo ${i + 1}`}
-          </span>
-          <span className="shrink-0 font-medium tabular-nums">
-            {formatMoney(item.amount, currencySymbol)}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+  const displayItems =
+    p.items.length > 0
+      ? p.items
+      : p.total > 0
+        ? [
+            {
+              id: `${p.id}-resumen`,
+              amount: p.total,
+              note: "Venta registrada",
+            },
+          ]
+        : [];
+
+  const detail =
+    displayItems.length > 0 ? (
+      <ul
+        className={`space-y-1.5 rounded-lg bg-[#faf9f8] ${
+          compact ? "mt-3 p-3" : "mt-3 p-4"
+        } ${!expanded ? "hidden" : ""}`}
+      >
+        {displayItems.map((item, i) => (
+          <li
+            key={item.id}
+            className="flex items-start justify-between gap-3 border-b border-[var(--calc-border)] pb-2 last:border-0 last:pb-0"
+          >
+            <span className="min-w-0 text-sm text-[#1a1a1a]">
+              {item.note || `Artículo ${i + 1}`}
+            </span>
+            <span className="shrink-0 text-sm font-medium tabular-nums text-[#1a1a1a]">
+              {formatMoney(item.amount, currencySymbol)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    ) : null;
+
+  const toggleLabel = expanded ? "Ocultar artículos" : "Ver artículos";
 
   if (compact) {
     return (
       <li className="py-3">
         <div className="flex items-start justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => canExpand && setExpanded(!expanded)}
-            className={`min-w-0 flex-1 text-left ${canExpand ? "cursor-pointer" : "cursor-default"}`}
-          >
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex rounded-full bg-[#deecf9] px-2 py-0.5 text-[10px] font-semibold text-[var(--calc-accent)]">
                 Venta
@@ -163,18 +178,23 @@ function PurchaseRow({
             <p className="mt-1 text-2xl font-normal tabular-nums text-[#1a1a1a]">
               {formatMoney(p.total, currencySymbol)}
             </p>
-            {canExpand && (
-              <p className="mt-0.5 flex items-center gap-1 text-sm text-[var(--calc-accent)]">
-                {p.items.length}{" "}
-                {p.items.length === 1 ? "artículo" : "artículos"}
+            {displayItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setExpanded(!expanded)}
+                className="mt-1 flex items-center gap-1 text-sm font-medium text-[var(--calc-accent)]"
+              >
+                {displayItems.length}{" "}
+                {displayItems.length === 1 ? "artículo" : "artículos"} ·{" "}
+                {toggleLabel}
                 {expanded ? (
                   <ChevronUp className="h-4 w-4" />
                 ) : (
                   <ChevronDown className="h-4 w-4" />
                 )}
-              </p>
+              </button>
             )}
-          </button>
+          </div>
           {onRemove && (
             <button
               type="button"
@@ -196,11 +216,7 @@ function PurchaseRow({
         <span className="inline-flex w-fit rounded-full bg-[#deecf9] px-3 py-1 text-xs font-semibold text-[var(--calc-accent)]">
           Venta
         </span>
-        <button
-          type="button"
-          onClick={() => canExpand && setExpanded(!expanded)}
-          className={`min-w-0 text-left ${canExpand ? "cursor-pointer" : "cursor-default"}`}
-        >
+        <div className="min-w-0">
           <p className="text-sm capitalize text-[var(--calc-muted)]">
             {formatDateTimeFull(p.createdAt)}
           </p>
@@ -214,19 +230,23 @@ function PurchaseRow({
               Pago: {paymentLabel}
             </p>
           )}
-          {canExpand && (
-            <p className="mt-1 flex items-center gap-1 text-sm text-[var(--calc-accent)]">
-              {p.items.length}{" "}
-              {p.items.length === 1 ? "artículo" : "artículos"} ·{" "}
-              {expanded ? "ocultar detalle" : "ver detalle"}
+          {displayItems.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="mt-1 flex items-center gap-1 text-sm font-medium text-[var(--calc-accent)]"
+            >
+              {displayItems.length}{" "}
+              {displayItems.length === 1 ? "artículo" : "artículos"} ·{" "}
+              {toggleLabel}
               {expanded ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-            </p>
+            </button>
           )}
-        </button>
+        </div>
         <p className="text-2xl font-light tabular-nums text-[#1a1a1a] lg:text-right">
           {formatMoney(p.total, currencySymbol)}
         </p>

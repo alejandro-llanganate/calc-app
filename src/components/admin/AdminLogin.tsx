@@ -1,22 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { loginAdmin } from "@/lib/admin/auth";
 
 type Props = {
-  onSuccess: () => void;
+  onLogin: (cedula: string, code: string) => boolean;
 };
 
-export function AdminLogin({ onSuccess }: Props) {
+export function AdminLogin({ onLogin }: Props) {
   const [cedula, setCedula] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginAdmin(cedula, code)) {
+    const ok = onLogin(cedula, code);
+    if (ok) {
       setError("");
-      onSuccess();
+      setCedula("");
+      setCode("");
     } else {
       setError("Cédula o código incorrectos.");
     }
@@ -30,7 +31,7 @@ export function AdminLogin({ onSuccess }: Props) {
       >
         <h1 className="text-xl font-semibold text-[#1a1a1a]">Administración</h1>
         <p className="mt-1 text-sm text-[var(--calc-muted)]">
-          Reportes y usuarios de la tienda.
+          Inicia sesión para ver reportes y usuarios.
         </p>
         <label className="mt-5 block">
           <span className="text-sm text-[var(--calc-muted)]">Cédula</span>

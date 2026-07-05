@@ -102,21 +102,30 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
                   </span>
                 )}
               </button>
-              <button
-                type="button"
-                onClick={() => activeUser && clearActiveUser()}
-                title={activeUser ? "Cambiar usuario" : "Selecciona un usuario"}
-                className={`flex max-w-[8rem] shrink-0 items-center gap-1 truncate rounded-lg px-2.5 py-1.5 text-xs font-semibold sm:max-w-[9rem] ${
-                  activeUser
-                    ? "bg-[#deecf9] text-[var(--calc-accent)]"
-                    : "bg-[#fde7e9] text-[#a4262c] animate-pulse"
-                }`}
-              >
-                <UserRound className="h-4 w-4 shrink-0" />
-                <span className="truncate">
-                  {activeUser ? activeUser.name : "Iniciar"}
-                </span>
-              </button>
+              {activeUser ? (
+                <>
+                  <span className="hidden max-w-[7rem] truncate rounded-lg bg-[#deecf9] px-2.5 py-1.5 text-xs font-semibold text-[var(--calc-accent)] sm:inline sm:max-w-[9rem]">
+                    {activeUser.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearActiveUser}
+                    title="Cerrar sesión de caja"
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--calc-border)] bg-white px-2.5 py-1.5 text-xs font-semibold text-[var(--calc-muted)] hover:bg-[#f3f2f1]"
+                  >
+                    <UserRound className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">Cerrar sesión</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="flex max-w-[8rem] shrink-0 items-center gap-1 truncate rounded-lg bg-[#fde7e9] px-2.5 py-1.5 text-xs font-semibold text-[#a4262c] animate-pulse sm:max-w-[9rem]"
+                >
+                  <UserRound className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Iniciar sesión</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => toggleItemDetails(!detailMode)}

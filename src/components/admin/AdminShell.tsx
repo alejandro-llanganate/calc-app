@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calculator, LayoutDashboard, LogOut, Users } from "lucide-react";
-import { logoutAdmin } from "@/lib/admin/auth";
+import { useAdminAuth } from "./AdminAuthProvider";
 
 const links = [
   { href: "/admin/reportes", label: "Reportes", icon: LayoutDashboard },
@@ -12,11 +12,7 @@ const links = [
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
-  const logout = () => {
-    logoutAdmin();
-    window.location.href = "/admin/";
-  };
+  const { logout } = useAdminAuth();
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[1440px] flex-col bg-[var(--background)]">
@@ -61,7 +57,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               className="inline-flex items-center gap-2 rounded-lg border border-[var(--calc-border)] px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" />
-              Salir
+              Cerrar sesión
             </button>
           </div>
         </div>

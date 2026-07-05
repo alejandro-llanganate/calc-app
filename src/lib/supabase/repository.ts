@@ -303,10 +303,12 @@ export async function insertPurchase(
   storeId: string,
   purchase: Purchase,
 ): Promise<void> {
-  const purchaseId = isValidUuid(purchase.id) ? purchase.id : newId();
+  if (!isValidUuid(purchase.id)) {
+    throw new Error("ID de compra inválido");
+  }
 
   const { error: purchaseError } = await supabase.from("purchases").insert({
-    id: purchaseId,
+    id: purchase.id,
     store_id: storeId,
     cashier_user_id: asUuidOrNull(purchase.registeredById),
     registered_by_name: purchase.registeredBy ?? null,
@@ -321,7 +323,7 @@ export async function insertPurchase(
     const { error: itemsError } = await supabase.from("purchase_items").insert(
       purchase.items.map((item, index) => ({
         id: isValidUuid(item.id) ? item.id : newId(),
-        purchase_id: purchaseId,
+        purchase_id: purchase.id,
         product_id: asUuidOrNull(item.productId),
         amount: item.amount,
         note: item.note ?? null,
