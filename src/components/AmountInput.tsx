@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { AMOUNT_INPUT_ID } from "@/lib/calculator";
+import { resolveCalculatorKey } from "@/lib/calculatorKeyboard";
 import {
   appendAmountDecimal,
   appendAmountDigit,
@@ -16,7 +17,10 @@ type Props = {
   onDigit?: (digit: string) => void;
   onDecimal?: () => void;
   onBackspace?: () => void;
+  onClear?: () => void;
+  onMultiply?: () => void;
   onEnter?: () => void;
+  onFinish?: () => void;
   symbol?: string;
   className?: string;
   placeholder?: string;
@@ -35,7 +39,10 @@ export function AmountInput({
   onDigit,
   onDecimal,
   onBackspace,
+  onClear,
+  onMultiply,
   onEnter,
+  onFinish,
   symbol,
   className = "",
   placeholder = "0",
@@ -78,25 +85,41 @@ export function AmountInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (/^[0-9]$/.test(e.key)) {
-      e.preventDefault();
-      handleDigit(e.key);
-      return;
+    const action = resolveCalculatorKey(e);
+    if (!action) return;
+
+    e.preventDefault();
+
+    switch (action.type) {
+      case "digit":
+        handleDigit(action.digit);
+        break;
+      case "decimal":
+        handleDecimal();
+        break;
+      case "backspace":
+        handleBackspace();
+        break;
+      case "clear":
+        onClear?.();
+        break;
+      case "multiply":
+        onMultiply?.();
+        break;
+      case "add":
+        onEnter?.();
+        break;
+      case "finish":
+        onFinish?.();
+        break;
     }
-    if (e.key === "," || e.key === ".") {
-      e.preventDefault();
-      handleDecimal();
-      return;
-    }
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      handleBackspace();
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      onEnter?.();
-    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text");
+    if (!text) return;
+    onChange(formatAmountDisplay(text));
   };
 
   if (isMicrosoft) {
@@ -141,6 +164,7 @@ export function AmountInput({
             placeholder={placeholder}
             onChange={(e) => onChange(formatAmountDisplay(e.target.value))}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className={`min-w-[2ch] flex-1 border-0 bg-transparent text-right font-light tabular-nums text-[#1a1a1a] outline-none placeholder:text-[#c8c6c4] ${textSize}`}
           />
         </div>
@@ -181,6 +205,7 @@ export function AmountInput({
         placeholder={placeholder}
         onChange={(e) => onChange(formatAmountDisplay(e.target.value))}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         className={`min-w-[3ch] flex-1 border-0 bg-transparent text-right font-mono font-semibold tabular-nums outline-none ${textSize} ${
           isDisplay
             ? "text-white placeholder:text-stone-500"

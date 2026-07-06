@@ -260,6 +260,7 @@ export function RegisterSale() {
     onClear,
     onMultiply,
     onEnter: addItem,
+    onFinish: requestFinish,
     enabled: !!activeUser,
   });
 
@@ -353,7 +354,10 @@ export function RegisterSale() {
             onDigit={onDigit}
             onDecimal={onDecimal}
             onBackspace={onBackspace}
+            onClear={onClear}
+            onMultiply={onMultiply}
             onEnter={addItem}
+            onFinish={requestFinish}
             symbol={symbol}
             variant="microsoft"
             placeholder="0"

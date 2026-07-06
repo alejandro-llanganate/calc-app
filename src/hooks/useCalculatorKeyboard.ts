@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { AMOUNT_INPUT_ID } from "@/lib/calculator";
+import { resolveCalculatorKey } from "@/lib/calculatorKeyboard";
 
 type Options = {
   onDigit: (digit: string) => void;
@@ -10,8 +11,58 @@ type Options = {
   onClear: () => void;
   onMultiply?: () => void;
   onEnter?: () => void;
+  onFinish?: () => void;
   enabled?: boolean;
 };
+
+function focusAmountInput() {
+  document.getElementById(AMOUNT_INPUT_ID)?.focus();
+}
+
+function dispatchCalculatorKey(
+  action: ReturnType<typeof resolveCalculatorKey>,
+  handlers: Pick<
+    Options,
+    | "onDigit"
+    | "onDecimal"
+    | "onBackspace"
+    | "onClear"
+    | "onMultiply"
+    | "onEnter"
+    | "onFinish"
+  >,
+) {
+  if (!action) return;
+
+  switch (action.type) {
+    case "digit":
+      handlers.onDigit(action.digit);
+      focusAmountInput();
+      break;
+    case "decimal":
+      handlers.onDecimal();
+      focusAmountInput();
+      break;
+    case "backspace":
+      handlers.onBackspace();
+      focusAmountInput();
+      break;
+    case "clear":
+      handlers.onClear();
+      focusAmountInput();
+      break;
+    case "multiply":
+      handlers.onMultiply?.();
+      focusAmountInput();
+      break;
+    case "add":
+      handlers.onEnter?.();
+      break;
+    case "finish":
+      handlers.onFinish?.();
+      break;
+  }
+}
 
 /** Teclado físico en toda la caja (sin hacer clic en el monto). */
 export function useCalculatorKeyboard({
@@ -21,6 +72,7 @@ export function useCalculatorKeyboard({
   onClear,
   onMultiply,
   onEnter,
+  onFinish,
   enabled = true,
 }: Options) {
   useEffect(() => {
@@ -44,48 +96,31 @@ export function useCalculatorKeyboard({
         return;
       }
 
-      if (/^[0-9]$/.test(e.key)) {
-        e.preventDefault();
-        onDigit(e.key);
-        document.getElementById(AMOUNT_INPUT_ID)?.focus();
-        return;
-      }
+      const action = resolveCalculatorKey(e);
+      if (!action) return;
 
-      if (e.key === "," || e.key === "." || e.code === "NumpadDecimal") {
-        e.preventDefault();
-        onDecimal();
-        document.getElementById(AMOUNT_INPUT_ID)?.focus();
-        return;
-      }
-
-      if (e.key === "Backspace" || e.key === "Delete") {
-        e.preventDefault();
-        onBackspace();
-        document.getElementById(AMOUNT_INPUT_ID)?.focus();
-        return;
-      }
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClear();
-        document.getElementById(AMOUNT_INPUT_ID)?.focus();
-        return;
-      }
-
-      if (e.key === "*" || e.key === "x" || e.key === "X") {
-        e.preventDefault();
-        onMultiply?.();
-        document.getElementById(AMOUNT_INPUT_ID)?.focus();
-        return;
-      }
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        onEnter?.();
-      }
+      e.preventDefault();
+      dispatchCalculatorKey(action, {
+        onDigit,
+        onDecimal,
+        onBackspace,
+        onClear,
+        onMultiply,
+        onEnter,
+        onFinish,
+      });
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onDigit, onDecimal, onBackspace, onClear, onMultiply, onEnter, enabled]);
+  }, [
+    onDigit,
+    onDecimal,
+    onBackspace,
+    onClear,
+    onMultiply,
+    onEnter,
+    onFinish,
+    enabled,
+  ]);
 }
