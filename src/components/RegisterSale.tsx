@@ -153,22 +153,21 @@ export function RegisterSale() {
   }, [resetCalc]);
 
   const onMultiply = useCallback(() => {
-    const current = parseAmountInput(input);
+    setInput((currentInput) => {
+      const current = parseAmountInput(currentInput);
 
-    if (pendingLeft != null && pendingOp === "multiply" && current != null) {
-      const result = applyCalcOperation(pendingLeft, current, "multiply");
-      setPendingLeft(result);
+      if (current == null) return currentInput;
+
+      setPendingLeft((left) => {
+        if (left != null && pendingOp === "multiply") {
+          return applyCalcOperation(left, current, "multiply");
+        }
+        return current;
+      });
       setPendingOp("multiply");
-      setInput("");
-      return;
-    }
-
-    if (current == null) return;
-
-    setPendingLeft(current);
-    setPendingOp("multiply");
-    setInput("");
-  }, [input, pendingLeft, pendingOp]);
+      return "";
+    });
+  }, [pendingOp]);
 
   const applyProduct = useCallback((product: Product) => {
     setItemName(product.name);
@@ -261,7 +260,7 @@ export function RegisterSale() {
     onMultiply,
     onEnter: addItem,
     onFinish: requestFinish,
-    enabled: !!activeUser,
+    enabled: !!activeUser && !showConfirm,
   });
 
   const canAdd = resolvedAmount != null && !!activeUser;

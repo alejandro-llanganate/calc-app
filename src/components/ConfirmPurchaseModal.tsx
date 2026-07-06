@@ -43,6 +43,25 @@ export function ConfirmPurchaseModal({
     if (open) setPaymentMethod(undefined);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.code === "NumpadEnter") {
+        e.preventDefault();
+        onAccept(paymentMethod);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, paymentMethod, onAccept, onCancel]);
+
   if (!open) return null;
 
   return (
