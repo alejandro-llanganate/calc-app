@@ -18,9 +18,21 @@ import type {
   Purchase,
   PurchaseItem,
 } from "@/lib/types";
+import { DEFAULT_SETTINGS } from "@/lib/types";
 import { debtPendingAmount, summarizeDebts } from "@/lib/debts";
 import { findProductByName } from "@/lib/products";
 import { asUuidOrNull } from "@/lib/id";
+import { probeSupabase } from "@/lib/offline/connectivity";
+import {
+  enqueueSyncOp,
+  flushSyncQueue,
+  getPendingSyncCount,
+  type SyncOp,
+} from "@/lib/offline/queue";
+import {
+  loadOfflineSnapshot,
+  saveOfflineSnapshot,
+} from "@/lib/offline/snapshot";
 import {
   deactivateCashierUser,
   deleteDebt,
@@ -50,6 +62,8 @@ import {
 type AppDataContextValue = {
   ready: boolean;
   loadError: string | null;
+  isOnline: boolean;
+  pendingSync: number;
   purchases: Purchase[];
   products: Product[];
   settings: AppSettings;
@@ -103,7 +117,10 @@ function normalizeCedula(cedula?: string) {
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const storeIdRef = useRef<string | null>(null);
+  const syncInProgressRef = useRef(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingSync, setPendingSync] = useState(0);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [products, setProductsState] = useState<Product[]>([]);
   const [settings, setSettingsState] = useState<AppSettings | null>(null);
@@ -112,63 +129,195 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [debts, setDebtsState] = useState<Debt[]>([]);
   const [ready, setReady] = useState(false);
 
+  const ensureStoreId = useCallback((): string => {
+    if (!storeIdRef.current) {
+      const snapshot = loadOfflineSnapshot();
+      storeIdRef.current = snapshot.storeId ?? newId();
+      saveOfflineSnapshot({ ...snapshot, storeId: storeIdRef.current });
+    }
+    return storeIdRef.current;
+  }, []);
+
+  const applySnapshot = useCallback(
+    (
+      snapshot: ReturnType<typeof loadOfflineSnapshot>,
+      userId: string | null,
+    ) => {
+      storeIdRef.current = snapshot.storeId;
+      setSettingsState(snapshot.settings);
+      setCashierUsersState(snapshot.cashierUsers);
+      setPurchases(snapshot.purchases);
+      setProductsState(snapshot.products);
+      setDebtsState(snapshot.debts);
+      setActiveUserState(resolveActiveUser(snapshot.cashierUsers, userId));
+    },
+    [],
+  );
+
+  const queueSync = useCallback((op: SyncOp) => {
+    enqueueSyncOp(op);
+    setPendingSync(getPendingSyncCount());
+    setIsOnline(false);
+  }, []);
+
+  const pushSync = useCallback(
+    async (op: SyncOp, action: () => Promise<void>) => {
+      try {
+        await action();
+        setIsOnline(true);
+      } catch (err) {
+        console.error(err);
+        queueSync(op);
+      }
+    },
+    [queueSync],
+  );
+
+  const syncToSupabase = useCallback(async () => {
+    if (syncInProgressRef.current) return;
+    syncInProgressRef.current = true;
+
+    try {
+      const reachable = await probeSupabase();
+      if (!reachable) {
+        setIsOnline(false);
+        return;
+      }
+
+      const { storeId, settings: remoteSettings } = await ensureStore();
+      storeIdRef.current = storeId;
+
+      const { remaining } = await flushSyncQueue(storeId);
+      setPendingSync(remaining);
+      setIsOnline(remaining === 0);
+      if (remaining === 0) setLoadError(null);
+
+      setSettingsState((prev) => prev ?? remoteSettings);
+      saveOfflineSnapshot({
+        storeId,
+        settings: remoteSettings,
+        cashierUsers,
+        purchases,
+        products,
+        debts,
+      });
+    } catch (err) {
+      console.error(err);
+      setIsOnline(false);
+    } finally {
+      syncInProgressRef.current = false;
+    }
+  }, [cashierUsers, purchases, products, debts]);
+
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      try {
-        const { storeId, settings: storeSettings } = await ensureStore();
-        storeIdRef.current = storeId;
-        const data = await loadAllStoreData(storeId);
-        const userId = getActiveUserId();
+      const userId = getActiveUserId();
 
+      try {
+        const { storeId, settings: remoteSettings } = await ensureStore();
+        const data = await loadAllStoreData(storeId);
         if (cancelled) return;
 
-        setSettingsState(storeSettings);
-        setCashierUsersState(data.cashierUsers);
-        setPurchases(data.purchases);
-        setProductsState(data.products);
-        setDebtsState(data.debts);
-        setActiveUserState(resolveActiveUser(data.cashierUsers, userId));
+        const snapshot = {
+          storeId,
+          settings: remoteSettings,
+          cashierUsers: data.cashierUsers,
+          purchases: data.purchases,
+          products: data.products,
+          debts: data.debts,
+        };
+
+        saveOfflineSnapshot(snapshot);
+        applySnapshot(snapshot, userId);
         setLoadError(null);
-        setReady(true);
+        setIsOnline(true);
+        setPendingSync(getPendingSyncCount());
+
+        const { remaining } = await flushSyncQueue(storeId);
+        if (!cancelled) {
+          setPendingSync(remaining);
+          setIsOnline(remaining === 0);
+        }
       } catch (err) {
         if (cancelled) return;
+
+        const snapshot = loadOfflineSnapshot();
+        if (!snapshot.storeId) {
+          snapshot.storeId = newId();
+          saveOfflineSnapshot(snapshot);
+        }
+
+        applySnapshot(snapshot, userId);
+        setPendingSync(getPendingSyncCount());
+        setIsOnline(false);
         setLoadError(
           err instanceof Error
             ? err.message
-            : "No se pudo conectar con Supabase. Ejecuta supabase/schema.sql y supabase/policies-anon.sql en tu proyecto.",
+            : "Sin conexión. Los datos se guardan en este dispositivo.",
         );
-        setReady(true);
+      } finally {
+        if (!cancelled) setReady(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applySnapshot]);
 
-  const persistSettings = useCallback(async (next: AppSettings) => {
-    setSettingsState(next);
-    const storeId = storeIdRef.current;
-    if (!storeId) return;
-    try {
-      await saveStoreSettings(storeId, next);
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
+  useEffect(() => {
+    if (!ready || !settings) return;
+    saveOfflineSnapshot({
+      storeId: storeIdRef.current,
+      settings,
+      cashierUsers,
+      purchases,
+      products,
+      debts,
+    });
+  }, [ready, settings, cashierUsers, purchases, products, debts]);
 
-  const persistProducts = useCallback(async (next: Product[]) => {
-    setProductsState(next);
-    const storeId = storeIdRef.current;
-    if (!storeId) return;
-    try {
-      await replaceProducts(storeId, next);
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
+  useEffect(() => {
+    const onOnline = () => {
+      void syncToSupabase();
+    };
+
+    window.addEventListener("online", onOnline);
+    const interval = window.setInterval(() => {
+      if (getPendingSyncCount() > 0) void syncToSupabase();
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.clearInterval(interval);
+    };
+  }, [syncToSupabase]);
+
+  const persistSettings = useCallback(
+    async (next: AppSettings) => {
+      setSettingsState(next);
+      const storeId = ensureStoreId();
+      void pushSync(
+        { type: "saveStoreSettings", storeId, settings: next },
+        () => saveStoreSettings(storeId, next),
+      );
+    },
+    [ensureStoreId, pushSync],
+  );
+
+  const persistProducts = useCallback(
+    async (next: Product[]) => {
+      setProductsState(next);
+      const storeId = ensureStoreId();
+      void pushSync(
+        { type: "replaceProducts", storeId, products: next },
+        () => replaceProducts(storeId, next),
+      );
+    },
+    [ensureStoreId, pushSync],
+  );
 
   const setActiveUser = useCallback((user: CashierUser) => {
     setActiveUserState(user);
@@ -182,10 +331,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const finalizePurchase = useCallback(
     (items: PurchaseItem[], paymentMethod?: PaymentMethod) => {
-      if (items.length === 0 || !storeIdRef.current) return null;
+      if (items.length === 0) return null;
       const user = activeUser;
       if (!user) return null;
 
+      const storeId = ensureStoreId();
       const purchase: Purchase = {
         id: newId(),
         items: items.map((item) => ({
@@ -201,25 +351,40 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       };
 
       setPurchases((prev) => [purchase, ...prev]);
-      void insertPurchase(storeIdRef.current, purchase).catch(console.error);
+      void pushSync(
+        { type: "insertPurchase", storeId, purchase },
+        () => insertPurchase(storeId, purchase),
+      );
       return purchase;
     },
-    [activeUser],
+    [activeUser, ensureStoreId, pushSync],
   );
 
-  const updatePurchase = useCallback((id: string, items: PurchaseItem[]) => {
-    if (items.length === 0) return;
-    const total = purchaseTotal(items);
-    setPurchases((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, items, total } : p)),
-    );
-    void replacePurchaseItems(id, items).catch(console.error);
-  }, []);
+  const updatePurchase = useCallback(
+    (id: string, items: PurchaseItem[]) => {
+      if (items.length === 0) return;
+      const total = purchaseTotal(items);
+      setPurchases((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, items, total } : p)),
+      );
+      void pushSync(
+        { type: "replacePurchaseItems", purchaseId: id, items },
+        () => replacePurchaseItems(id, items),
+      );
+    },
+    [pushSync],
+  );
 
-  const removePurchase = useCallback((id: string) => {
-    setPurchases((prev) => prev.filter((p) => p.id !== id));
-    void deletePurchase(id).catch(console.error);
-  }, []);
+  const removePurchase = useCallback(
+    (id: string) => {
+      setPurchases((prev) => prev.filter((p) => p.id !== id));
+      void pushSync(
+        { type: "deletePurchase", purchaseId: id },
+        () => deletePurchase(id),
+      );
+    },
+    [pushSync],
+  );
 
   const purchasesForDate = useCallback(
     (dateKey: string) =>
@@ -243,7 +408,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           setProductsState((prev) =>
             prev.map((p) => (p.id === existing.id ? updated : p)),
           );
-          void updateProduct(updated).catch(console.error);
+          void pushSync(
+            { type: "updateProduct", product: updated },
+            () => updateProduct(updated),
+          );
           return updated;
         }
         return existing;
@@ -255,11 +423,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         price,
       };
       setProductsState((prev) => [product, ...prev]);
-      const storeId = storeIdRef.current;
-      if (storeId) void insertProduct(storeId, product).catch(console.error);
+      const storeId = ensureStoreId();
+      void pushSync(
+        { type: "insertProduct", storeId, product },
+        () => insertProduct(storeId, product),
+      );
       return product;
     },
-    [products],
+    [products, ensureStoreId, pushSync],
   );
 
   const toggleItemDetails = useCallback(
@@ -276,8 +447,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const addDebt = useCallback(
     (debtorName: string, amount: number, note?: string): Debt | null => {
       const trimmed = debtorName.trim();
-      if (!trimmed || amount <= 0 || !storeIdRef.current) return null;
+      if (!trimmed || amount <= 0) return null;
 
+      const storeId = ensureStoreId();
       const debt: Debt = {
         id: newId(),
         debtorName: trimmed,
@@ -291,10 +463,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       };
 
       setDebtsState((prev) => [debt, ...prev]);
-      void insertDebt(storeIdRef.current, debt).catch(console.error);
+      void pushSync(
+        { type: "insertDebt", storeId, debt },
+        () => insertDebt(storeId, debt),
+      );
       return debt;
     },
-    [activeUser],
+    [activeUser, ensureStoreId, pushSync],
   );
 
   const markDebtPaid = useCallback((id: string) => {
@@ -316,51 +491,70 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           : d,
       );
       const updated = next.find((d) => d.id === id);
-      if (updated) void updateDebt(updated).catch(console.error);
+      if (updated) {
+        void pushSync(
+          { type: "updateDebt", debt: updated },
+          () => updateDebt(updated),
+        );
+      }
       return next;
     });
-  }, []);
+  }, [pushSync]);
 
-  const addDebtPayment = useCallback((id: string, amount: number) => {
-    if (amount <= 0) return;
+  const addDebtPayment = useCallback(
+    (id: string, amount: number) => {
+      if (amount <= 0) return;
 
-    setDebtsState((prev) => {
-      const debt = prev.find((d) => d.id === id);
-      if (!debt) return prev;
+      setDebtsState((prev) => {
+        const debt = prev.find((d) => d.id === id);
+        if (!debt) return prev;
 
-      const pending = debtPendingAmount(debt);
-      const pay = Math.min(pending, Math.round(amount * 100) / 100);
-      if (pay <= 0) return prev;
+        const pending = debtPendingAmount(debt);
+        const pay = Math.min(pending, Math.round(amount * 100) / 100);
+        if (pay <= 0) return prev;
 
-      const newPaid = Math.round((debt.amountPaid + pay) * 100) / 100;
-      const fullyPaid = newPaid >= debt.amount - 0.001;
-      const paidAt = fullyPaid ? new Date().toISOString() : debt.paidAt;
+        const newPaid = Math.round((debt.amountPaid + pay) * 100) / 100;
+        const fullyPaid = newPaid >= debt.amount - 0.001;
+        const paidAt = fullyPaid ? new Date().toISOString() : debt.paidAt;
 
-      const next = prev.map((d) =>
-        d.id === id
-          ? {
-              ...d,
-              amountPaid: fullyPaid ? d.amount : newPaid,
-              status: fullyPaid ? ("paid" as const) : ("pending" as const),
-              paidAt: fullyPaid ? paidAt : d.paidAt,
-            }
-          : d,
+        const next = prev.map((d) =>
+          d.id === id
+            ? {
+                ...d,
+                amountPaid: fullyPaid ? d.amount : newPaid,
+                status: fullyPaid ? ("paid" as const) : ("pending" as const),
+                paidAt: fullyPaid ? paidAt : d.paidAt,
+              }
+            : d,
+        );
+        const updated = next.find((d) => d.id === id);
+        if (updated) {
+          void pushSync(
+            { type: "updateDebt", debt: updated },
+            () => updateDebt(updated),
+          );
+        }
+        return next;
+      });
+    },
+    [pushSync],
+  );
+
+  const removeDebt = useCallback(
+    (id: string) => {
+      setDebtsState((prev) => prev.filter((d) => d.id !== id));
+      void pushSync(
+        { type: "deleteDebt", debtId: id },
+        () => deleteDebt(id),
       );
-      const updated = next.find((d) => d.id === id);
-      if (updated) void updateDebt(updated).catch(console.error);
-      return next;
-    });
-  }, []);
-
-  const removeDebt = useCallback((id: string) => {
-    setDebtsState((prev) => prev.filter((d) => d.id !== id));
-    void deleteDebt(id).catch(console.error);
-  }, []);
+    },
+    [pushSync],
+  );
 
   const addCashierUser = useCallback(
     (name: string, cedula?: string): CashierUser | null => {
       const trimmed = name.trim();
-      if (!trimmed || !storeIdRef.current) return null;
+      if (!trimmed) return null;
       const code = normalizeCedula(cedula);
       if (
         code &&
@@ -369,6 +563,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
 
+      const storeId = ensureStoreId();
       const user: CashierUser = {
         id: newId(),
         name: trimmed,
@@ -376,10 +571,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       };
 
       setCashierUsersState((prev) => [...prev, user]);
-      void insertCashierUser(storeIdRef.current, user).catch(console.error);
+      void pushSync(
+        { type: "insertCashierUser", storeId, user },
+        () => insertCashierUser(storeId, user),
+      );
       return user;
     },
-    [cashierUsers],
+    [cashierUsers, ensureStoreId, pushSync],
   );
 
   const updateCashierUser = useCallback(
@@ -416,21 +614,28 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (updatedUser) {
-        void updateCashierUserDb(updatedUser).catch(console.error);
-        if (activeUser?.id === id) setActiveUserState(updatedUser);
+        const user = updatedUser;
+        void pushSync(
+          { type: "updateCashierUser", user },
+          () => updateCashierUserDb(user),
+        );
+        if (activeUser?.id === id) setActiveUserState(user);
       }
     },
-    [cashierUsers, activeUser?.id],
+    [cashierUsers, activeUser?.id, pushSync],
   );
 
   const removeCashierUser = useCallback(
     (id: string) => {
       if (cashierUsers.length <= 1) return;
       setCashierUsersState((prev) => prev.filter((u) => u.id !== id));
-      void deactivateCashierUser(id).catch(console.error);
+      void pushSync(
+        { type: "deactivateCashierUser", userId: id },
+        () => deactivateCashierUser(id),
+      );
       if (activeUser?.id === id) clearActiveUser();
     },
-    [cashierUsers.length, activeUser?.id, clearActiveUser],
+    [cashierUsers.length, activeUser?.id, clearActiveUser, pushSync],
   );
 
   const persistCashierUsers = useCallback((next: CashierUser[]) => {
@@ -446,9 +651,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ready,
       loadError,
+      isOnline,
+      pendingSync,
       purchases,
       products,
-      settings: settings!,
+      settings: settings ?? DEFAULT_SETTINGS,
       cashierUsers,
       activeUser,
       todayPurchases,
@@ -478,6 +685,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     [
       ready,
       loadError,
+      isOnline,
+      pendingSync,
       purchases,
       products,
       settings,
@@ -512,25 +721,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-full items-center justify-center text-stone-500">
-        Conectando con Supabase…
-      </div>
-    );
-  }
-
-  if (loadError || !settings) {
-    return (
-      <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="font-medium text-red-700">Error de conexión</p>
-        <p className="max-w-md text-sm text-stone-600">{loadError}</p>
-        <p className="max-w-md text-xs text-stone-500">
-          En Supabase → SQL Editor ejecuta{" "}
-          <code className="rounded bg-stone-100 px-1">supabase/schema.sql</code>{" "}
-          y luego{" "}
-          <code className="rounded bg-stone-100 px-1">
-            supabase/policies-anon.sql
-          </code>
-          .
-        </p>
+        Cargando…
       </div>
     );
   }

@@ -42,6 +42,8 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
     activeUser,
     clearActiveUser,
     debtSummary,
+    isOnline,
+    pendingSync,
   } = useAppData();
 
   const isCaja = pathname === "/";
@@ -85,6 +87,16 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
                   {settings.storeName}
                 </p>
                 <p className="truncate text-xs text-[var(--calc-muted)]">
+                  {!isOnline && (
+                    <span className="mr-1 font-medium text-amber-700">
+                      Sin conexión ·
+                    </span>
+                  )}
+                  {isOnline && pendingSync > 0 && (
+                    <span className="mr-1 font-medium text-amber-700">
+                      Sincronizando {pendingSync}… ·
+                    </span>
+                  )}
                   {formatMoney(todayTotal, symbol)} · {todayPurchases.length}{" "}
                   {todayPurchases.length === 1 ? "compra" : "compras"}
                 </p>

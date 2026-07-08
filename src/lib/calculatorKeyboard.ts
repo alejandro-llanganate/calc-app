@@ -46,8 +46,6 @@ function isMultiplyKey(e: KeyEventLike): boolean {
 
 function isAddKey(e: KeyEventLike): boolean {
   return (
-    e.key === "Enter" ||
-    e.code === "NumpadEnter" ||
     e.key === "+" ||
     e.code === "NumpadAdd" ||
     (e.code === "Equal" && e.shiftKey)
@@ -56,7 +54,9 @@ function isAddKey(e: KeyEventLike): boolean {
 
 function isFinishKey(e: KeyEventLike): boolean {
   return (
-    (e.key === "=" || e.code === "NumpadEqual") && !e.shiftKey
+    e.key === "Enter" ||
+    e.code === "NumpadEnter" ||
+    ((e.key === "=" || e.code === "NumpadEqual") && !e.shiftKey)
   );
 }
 
