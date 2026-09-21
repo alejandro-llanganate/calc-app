@@ -16,7 +16,7 @@ App para tiendas que quieren dejar la máquina de escribir con papel y registrar
 
 ```bash
 npm install
-npm run dev
+npm run dev.
 ```
 
 Abre [http://localhost:3000](http://localhost:3000).
