@@ -9,7 +9,7 @@ App para tiendas que quieren dejar la máquina de escribir con papel y registrar
 - **Caja** (`/`): teclado numérico, botón **+** para sumar artículos, **Finalizar compra** guarda la compra completa con fecha y hora exacta.
 - **Panel** (`/panel`): resumen, gráficos, productos, historial y ajustes.
 - **Productos**: catálogo opcional (nombre y precio).
-- **Historial**: ventas por día y descarga de respaldo JSON.
+- **Historial**: ventas por día y descarga de respaldo JSON..
 - **Persistencia**: `localStorage` en el navegador (sin servidor).
 
 ## Desarrollo local
